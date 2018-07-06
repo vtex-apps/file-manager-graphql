@@ -1,0 +1,15 @@
+type File {
+  fileUrl: String!
+}
+
+input Upload {
+  name: String
+}
+
+type Mutation {
+  uploadFile(file: Upload!): File!
+}
+
+type Query {
+  getFileUrl(filePath: String): File
+}

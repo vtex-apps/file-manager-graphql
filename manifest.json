@@ -1,0 +1,24 @@
+{
+  "name": "file-manager-graphql",
+  "vendor": "vtex",
+  "version": "0.1.0",
+  "title": "File Manager GraphQL",
+  "description": "",
+  "policies": [
+    {
+      "name": "vtex.file-manager:file-manager-read-write"
+    }
+  ],
+  "dependencies": {
+    "vtex.file-manager": "0.x"
+  },
+  "builders": {
+    "graphql": "1.x",
+    "node": "3.x"
+  },
+  "credentialType": "absolute",
+  "mustUpdateAt": "2019-07-06",
+  "registries": [
+    "smartcheckout"
+  ]
+}
