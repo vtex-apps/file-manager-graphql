@@ -1,6 +1,5 @@
 import {GraphQLUpload} from 'apollo-upload-server'
 import FileManager from './FileManager'
-import {jsonStream} from './util'
 
 export const resolvers = {
   Query: {
