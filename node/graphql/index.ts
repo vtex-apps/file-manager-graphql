@@ -1,4 +1,3 @@
-import {GraphQLUpload} from 'apollo-upload-server'
 import FileManager from './FileManager'
 
 export const resolvers = {
@@ -16,6 +15,5 @@ export const resolvers = {
       const fileUrl = await fileManager.saveFile(filename, stream, mimetype, encoding)
       return {fileUrl}
     },
-  },
-  Upload: GraphQLUpload
+  }
 }
