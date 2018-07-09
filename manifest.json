@@ -10,7 +10,8 @@
     }
   ],
   "dependencies": {
-    "vtex.file-manager": "0.x"
+    "vtex.file-manager": "0.x",
+    "infra:service-node": "2.5.2-beta.1"
   },
   "builders": {
     "graphql": "1.x",
