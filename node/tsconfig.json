@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "types": [
+      "bluebird-global",
+      "jest",
+      "node"
+    ],
+    "lib": [
+      "dom",
+      "es2017",
+      "esnext.asynciterable"
+    ],
+    "target": "es2017",
+    "module": "commonjs",
+    "sourceMap": false,
+    "outDir": "service",
+    "allowJs": true
+  },
+  "typeAcquisition": {
+    "enable": false
+  },
+  "include": ["./**/*"],
+  "exclude": ["node_modules"],
+  "compileOnSave": true
+}

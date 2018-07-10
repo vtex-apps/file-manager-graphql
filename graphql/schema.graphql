@@ -5,9 +5,15 @@ type File {
 }
 
 type Mutation {
-  uploadFile(file: Upload!): File!
+  """Save file (returns file's immutable URL)"""
+  uploadFile(file: Upload!, bucket: String = "images"): File
+  """Delete file from bucket"""
+  deleteFile(path: String!, bucket: String = "images"): Boolean!
 }
 
 type Query {
-  getFileUrl(filePath: String): File
+  """Get file’s immutable URL"""
+  getFileUrl(path: String!, bucket: String = "images"): String
+  """Get file"""
+  getFile(path: String!, width: Int = 1, height: Int = 2, aspect: Boolean = false, bucket: String = "images"): String
 }

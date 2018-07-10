@@ -4,10 +4,14 @@
   "version": null,
   "dependencies": {
     "@vtex/api": "^0.40.0",
-    "apollo-upload-server": "^5.0.0"
+    "apollo-upload-server": "^5.0.0",
+    "ramda": "^0.25.0"
   },
   "devDependencies": {
     "@types/node": "^10.3.2",
     "@types/random-js": "^1.0.30"
+  },
+  "scripts": {
+    "lint": "tsc --noEmit && tslint -c tslint.json './**/*.ts'"
   }
 }
