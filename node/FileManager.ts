@@ -1,9 +1,12 @@
 import {HttpClient, IOContext, InstanceOptions} from '@vtex/api'
 import {FileNotFound} from './exceptions/fileNotFound'
-import { InternalServerError } from './exceptions/internalServerError';
+import {InternalServerError} from './exceptions/internalServerError'
+import {pathEq, path, pick} from 'ramda'
 
 const appId = process.env.VTEX_APP_ID
 const [runningAppName] = appId ? appId.split('@') : ['']
+
+const FORWARD_FIELDS = ['status', 'statusText', 'data', 'stack', 'stackTrace']
 
 const routes = {
   Assets: () => `/assets/${runningAppName}`,
@@ -25,10 +28,10 @@ export default class FileManager {
 
   getFile = async (path: string, width: number, height: number, aspect: boolean, bucket: string) => {
     try {
-      return this.http.get(routes.File(path, width, height, aspect, bucket))
+      return await this.http.get(routes.File(path, width, height, aspect, bucket))
     } catch (e) {
-      if (e.statusCode === 404) {
-        throw new FileNotFound(e)
+      if (e.statusCode === 404 || pathEq(['response', 'status'], 404, e)) {
+        throw new FileNotFound(pick(FORWARD_FIELDS, e.response))
       } else {
         throw e
       }
@@ -37,10 +40,10 @@ export default class FileManager {
 
   getFileUrl = async (path: string, bucket: string) => {
     try {
-      return this.http.get(routes.FileUrl(bucket, path))
+      return await this.http.get(routes.FileUrl(bucket, path))
     } catch (e) {
-      if (e.statusCode === 404) {
-        throw new FileNotFound(e)
+      if (e.statusCode === 404 || pathEq(['response', 'status'], 404, e)) {
+        throw new FileNotFound(pick(FORWARD_FIELDS, e.response))
       } else {
         throw e
       }
@@ -54,18 +57,20 @@ export default class FileManager {
         'Content-Type': mimetype,
         'Content-Encoding': encoding,
       }
-      return this.http.put(routes.FileUpload(bucket, filename), stream, {headers})
+      return await this.http.put(routes.FileUpload(bucket, filename), stream, {headers})
     } catch (e) {
-      throw new InternalServerError(e, 'Fail to save file', e.statusCode || 500)
+      const status = e.statusCode || path(['response', 'status'], e) || 500
+      const extensions = pick(FORWARD_FIELDS, e.response)
+      throw new InternalServerError(extensions, 'Fail to save file', status)
     }
   }
 
   deleteFile = async (path: string, bucket: string) => {
     try {
-      return this.http.delete(routes.FileDelete(bucket, path))
+      return await this.http.delete(routes.FileDelete(bucket, path))
     } catch (e) {
-      if (e.statusCode === 404) {
-        throw new FileNotFound(e)
+      if (e.statusCode === 404 || pathEq(['response', 'status'], 404, e)) {
+        throw new FileNotFound(pick(FORWARD_FIELDS, e.response))
       } else {
         throw e
       }

@@ -28,7 +28,8 @@ export const resolvers = {
     deleteFile: async (obj, args, ctx, info) => {
       const fileManager = new FileManager(ctx.vtex)
       const {path, bucket} = args
-      return await fileManager.deleteFile(path, bucket)
+      await fileManager.deleteFile(path, bucket)
+      return true
     }
   }
 }
