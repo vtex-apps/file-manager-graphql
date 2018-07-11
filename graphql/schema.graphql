@@ -4,6 +4,10 @@ type File {
   encoding: String!
 }
 
+type Settings {
+  maxFileSizeMB: Int
+}
+
 type Mutation {
   """Save file (returns file's immutable URL)"""
   uploadFile(file: Upload!, bucket: String = "images"): File
@@ -16,4 +20,6 @@ type Query {
   getFileUrl(path: String!, bucket: String = "images"): String
   """Get file"""
   getFile(path: String!, width: Int = 1, height: Int = 2, aspect: Boolean = false, bucket: String = "images"): String
+  """Settings"""
+  settings: Settings
 }
