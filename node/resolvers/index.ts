@@ -11,7 +11,10 @@ export const resolvers = {
       const fileManager = new FileManager(ctx.vtex)
       const {path, bucket} = args
       return await fileManager.getFileUrl(path, bucket)
-    }
+    },
+    settings: async (root, args, ctx, info) => ({
+      maxFileSizeMB: 4
+    }),
   },
   Mutation: {
     uploadFile: async (obj, args, ctx, info) => {
