@@ -1,20 +1,31 @@
 {
   "compilerOptions": {
-    "types": [
-      "bluebird-global",
-      "jest",
-      "node"
-    ],
+    "allowJs": true,
+    "alwaysStrict": true,
+    "esModuleInterop": true,
     "lib": [
       "dom",
       "es2017",
       "esnext.asynciterable"
     ],
-    "target": "es2017",
     "module": "commonjs",
-    "sourceMap": false,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "outDir": "service",
-    "allowJs": true
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "target": "es2017",
+    "types": [
+      "bluebird-global",
+      "jest",
+      "node"
+    ]
   },
   "typeAcquisition": {
     "enable": false
