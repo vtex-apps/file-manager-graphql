@@ -3,7 +3,6 @@
   "description": "GraphQL resolvers. Any required dependencies should be defined in this file.",
   "version": null,
   "dependencies": {
-    "@vtex/api": "^0.40.0",
     "apollo-upload-server": "^5.0.0",
     "ramda": "^0.25.0"
   },
@@ -12,7 +11,8 @@
     "@types/jest": "^24.0.11",
     "@types/node": "^10.3.2",
     "@types/ramda": "^0.26.8",
-    "@types/random-js": "^1.0.30"
+    "@types/random-js": "^1.0.30",
+    "@vtex/api": "^3.4.3"
   },
   "scripts": {
     "lint": "tsc --noEmit && tslint -c tslint.json './**/*.ts'"
