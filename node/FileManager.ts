@@ -50,7 +50,7 @@ export default class FileManager {
     }
   }
 
-  saveFile = async (file: IncomingFile, stream, bucket: string) => {
+  saveFile = async (file: IncomingFile, stream: any, bucket: string) => {
     try {
       const {filename, encoding, mimetype} = file
       const headers = {

@@ -1,6 +1,6 @@
 export class FileNotFound extends Error {
   constructor(
-    public extensions,
+    public extensions: any,
     public message = 'File Not Found',
     public statusCode = 404,
   ) {
