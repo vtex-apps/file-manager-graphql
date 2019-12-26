@@ -1,7 +1,7 @@
 {
   "name": "vtex.product-review-graphql-example",
   "description": "GraphQL resolvers. Any required dependencies should be defined in this file.",
-  "version": null,
+  "version": "0.2.0",
   "dependencies": {
     "@vtex/api": "^0.40.0",
     "apollo-upload-server": "^5.0.0",
