@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid'
 import FileManager from '../FileManager'
 
 export const resolvers = {
@@ -20,7 +21,10 @@ export const resolvers = {
     uploadFile: async (obj, args, ctx, info) => {
       const fileManager = new FileManager(ctx.vtex)
       const {file, bucket} = args
-      const {stream, filename, mimetype, encoding} = await file
+      const {stream, filename: name, mimetype, encoding} = await file
+      const [,extension] = name.split(',')
+      const filename = `${uuidv4()}.${extension}`
+
       const incomingFile = {filename, mimetype, encoding}
       return {
         encoding,
