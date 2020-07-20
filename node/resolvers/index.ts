@@ -22,7 +22,7 @@ export const resolvers = {
       const fileManager = new FileManager(ctx.vtex)
       const {file, bucket} = args
       const {stream, filename: name, mimetype, encoding} = await file
-      const [,extension] = name.split(',')
+      const [,extension] = name.split('.')
       const filename = `${uuidv4()}.${extension}`
 
       const incomingFile = {filename, mimetype, encoding}
