@@ -5,7 +5,8 @@
   "dependencies": {
     "@vtex/api": "^0.40.0",
     "apollo-upload-server": "^5.0.0",
-    "ramda": "^0.25.0"
+    "ramda": "^0.25.0",
+    "uuid": "^8.2.0"
   },
   "devDependencies": {
     "@types/bluebird-global": "^3.5.12",
