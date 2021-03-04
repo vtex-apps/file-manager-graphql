@@ -3,16 +3,19 @@
   "description": "GraphQL resolvers. Any required dependencies should be defined in this file.",
   "version": "0.3.0",
   "dependencies": {
-    "@vtex/api": "^0.40.0",
     "apollo-upload-server": "^5.0.0",
     "ramda": "^0.25.0",
     "uuid": "^8.2.0"
   },
   "devDependencies": {
+    "@vtex/api": "^3.0.0",
     "@types/bluebird-global": "^3.5.12",
     "@types/jest": "^24.0.24",
     "@types/node": "^10.3.2",
-    "@types/random-js": "^1.0.30"
+    "@types/ramda": "^0.27.38",
+    "@types/random-js": "^1.0.30",
+    "vtex.file-manager": "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager@0.10.1/public/_types/react",
+    "vtex.file-manager-graphql": "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager-graphql@0.3.0/public/@types/vtex.file-manager-graphql"
   },
   "scripts": {
     "lint": "tsc --noEmit && tslint -c tslint.json './**/*.ts'"

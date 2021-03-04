@@ -17,7 +17,7 @@
   },
   "builders": {
     "graphql": "1.x",
-    "node": "3.x",
+    "node": "4.x",
     "docs": "0.x"
   },
   "credentialType": "absolute",
