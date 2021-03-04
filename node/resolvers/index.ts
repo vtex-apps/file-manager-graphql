@@ -69,9 +69,9 @@ export const resolvers = {
     uploadFile: (
       _root: null,
       args: MutationUploadFileArgs,
-      { clients: { fileManager } }: Context
+      { clients: { fileManager, masterData } }: Context
     ) => {
-      return uploadFile({ client: fileManager, args })
+      return uploadFile({ client: fileManager, masterData, args })
     },
     deleteFile: async (
       _root: null,
@@ -92,29 +92,14 @@ export const resolvers = {
       const { files, bucket } = args
       const responses = await Promise.allSettled(
         files.map(async (file) =>
-          // TODO: After file manager upload, save on masterdata
-          {
-            const uploadedFile = await uploadFile({
-              client: fileManager,
-              args: {
-                bucket,
-                file,
-              },
-            })
-
-            const response = await masterData.createImage({
-              name: uploadedFile.name,
-              assetId: uploadedFile.assetId,
-              mimetype: uploadedFile.mimetype,
-              url: uploadedFile.fileUrl,
-              encoding: uploadedFile.encoding,
-            })
-
-            return {
-              id: response.Id,
-              ...uploadedFile,
-            }
-          }
+          uploadFile({
+            client: fileManager,
+            masterData,
+            args: {
+              bucket,
+              file,
+            },
+          })
         )
       )
 

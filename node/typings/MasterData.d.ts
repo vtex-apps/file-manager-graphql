@@ -3,7 +3,6 @@ declare module 'master-data' {
     id: string
     url: string
     name: string
-    assetId: string
     mimetype: string
     encoding: string
   }
