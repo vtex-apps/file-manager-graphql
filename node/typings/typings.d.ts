@@ -1,4 +1,4 @@
-import type { Clients } from './clients'
+import type { Clients } from '../clients'
 import type { ServiceContext } from '@vtex/api'
 
 declare global {
