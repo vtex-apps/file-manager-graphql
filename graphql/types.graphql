@@ -35,6 +35,7 @@ File comming from response. If id and url are null, upload errored.
 """
 type UploadedFileResponse {
   id: ID
+  assetId: ID
   name: String!
   mimetype: String!
   encoding: String!

@@ -7,6 +7,13 @@
   "policies": [
     {
       "name": "vtex.file-manager:file-manager-read-write"
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "api.vtex.com",
+        "path": "/{{account}}/dataentities/*"
+      }
     }
   ],
   "dependencies": {

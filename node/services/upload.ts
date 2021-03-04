@@ -14,13 +14,14 @@ export async function uploadFile({
   const { createReadStream, filename: name, mimetype, encoding } = await file
 
   const [extension] = name?.split('.')?.reverse()
-  const id = uuidv4()
-  const filename = `${id}.${extension}`
+  const assetId = uuidv4()
+  const filename = `${assetId}.${extension}`
 
   const incomingFile = { filename, mimetype, encoding }
 
   return {
-    id,
+    assetId,
+    name,
     encoding,
     mimetype,
     fileUrl: await client.saveFile(incomingFile, createReadStream(), bucket),
