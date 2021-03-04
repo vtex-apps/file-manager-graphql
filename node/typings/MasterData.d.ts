@@ -7,4 +7,17 @@ declare module 'master-data' {
     extension: string
     encoding: string
   }
+
+  export interface ImageSearchParameters {
+    mimetype: string
+    extension: string
+    name: string
+    _where?: string
+    _fields?: string
+    _keyword?: string
+    _schema?: string
+    _sort?: string
+    first: number
+    offset: number
+  }
 }
