@@ -17,13 +17,11 @@
   },
   "builders": {
     "graphql": "1.x",
-    "node": "4.x",
+    "node": "6.x",
     "docs": "0.x"
   },
   "credentialType": "absolute",
   "mustUpdateAt": "2019-07-06",
-  "registries": [
-    "smartcheckout"
-  ],
+  "registries": ["smartcheckout"],
   "$schema": "https://raw.githubusercontent.com/vtex/node-vtex-api/master/gen/manifest.schema"
 }
