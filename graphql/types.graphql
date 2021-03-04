@@ -37,6 +37,7 @@ type UploadedFileResponse {
   id: ID
   name: String!
   mimetype: String!
+  extension: String!
   encoding: String!
   url: String
 }

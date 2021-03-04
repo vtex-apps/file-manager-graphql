@@ -23,22 +23,27 @@ export async function uploadFile({
   const incomingFile = { filename, mimetype, encoding }
 
   const uploadedFile = {
+    id,
     name,
     encoding,
     mimetype,
+    extension,
     fileUrl: await client.saveFile(incomingFile, createReadStream(), bucket),
   }
 
-  const masterDataFile = await masterData.createImage({
-    id,
-    name: uploadedFile.name,
-    mimetype: uploadedFile.mimetype,
-    url: uploadedFile.fileUrl,
-    encoding: uploadedFile.encoding,
-  })
-
-  return {
-    id: masterDataFile.DocumentId,
-    ...uploadedFile,
+  try {
+    await masterData.createImage({
+      id: uploadedFile.id,
+      name: uploadedFile.name,
+      mimetype: uploadedFile.mimetype,
+      extension: uploadedFile.extension,
+      encoding: uploadedFile.encoding,
+      url: uploadedFile.fileUrl,
+    })
+  } catch (err) {
+    await client.deleteFile({ bucket, path: filename })
+    throw err
   }
+
+  return uploadedFile
 }

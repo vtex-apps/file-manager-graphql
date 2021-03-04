@@ -115,6 +115,7 @@ export const resolvers = {
               name,
               mimetype,
               encoding,
+              extension: name.split('.').reverse()[0],
             },
             success: response.status === 'fulfilled',
             errorCode:

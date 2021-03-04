@@ -34,7 +34,7 @@ export default class MasterData extends IOClient {
 
   public fetchImageById = this.getDocumentFetcherById<Image>(
     IMAGE_DATA_ENTITY,
-    ['id', 'url', 'name', 'encoding', 'mimetype']
+    ['id', 'url', 'name', 'encoding', 'mimetype', 'extension']
   )
 
   private getDocumentCreator<T>(dataEntityName: string) {

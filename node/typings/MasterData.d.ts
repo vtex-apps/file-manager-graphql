@@ -4,6 +4,7 @@ declare module 'master-data' {
     url: string
     name: string
     mimetype: string
+    extension: string
     encoding: string
   }
 }

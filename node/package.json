@@ -21,6 +21,6 @@
     "@vtex/tsconfig": "^0.5.6",
     "typescript": "3.9.7",
     "vtex.file-manager": "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager@0.10.1/public/_types/react",
-    "vtex.file-manager-graphql": "https://media--storecomponents.myvtex.com/_v/private/typings/linked/v1/vtex.file-manager-graphql@0.3.0+build1614886334/public/@types/vtex.file-manager-graphql"
+    "vtex.file-manager-graphql": "https://media--storecomponents.myvtex.com/_v/private/typings/linked/v1/vtex.file-manager-graphql@0.3.0+build1614890138/public/@types/vtex.file-manager-graphql"
   }
 }
