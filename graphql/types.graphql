@@ -29,3 +29,21 @@ type Paging {
   total: Int!
   pages: Int!
 }
+
+"""
+File comming from response. If id and url are null, upload errored.
+"""
+type UploadedFileResponse {
+  id: ID
+  name: String!
+  mimetype: String!
+  encoding: String!
+  url: String
+}
+
+type FileUploadResponse {
+  file: UploadedFileResponse
+  success: Boolean!
+  errorCode: Int
+  errorMessage: String
+}

@@ -102,15 +102,13 @@ export default class FileManager extends AppClient {
         'Content-Encoding': encoding,
       }
 
-      const response = await this.http.put<string>(
+      return await this.http.put<string>(
         routes.FileUpload(bucket ?? DEFAULT_BUCKET, filename),
         stream,
         {
           headers,
         }
       )
-
-      return response
     } catch (e) {
       const status = e.statusCode || e?.response?.status || 500
       const extensions = pick(FORWARD_FIELDS, e.response)

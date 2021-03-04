@@ -1,7 +1,7 @@
 {
   "extends": "@vtex/tsconfig",
   "compilerOptions": {
-    "lib": ["es2019"],
+    "lib": ["es2019", "es2020.promise"],
     "target": "es2019"
   },
   "include": ["./typings/*.d.ts", "./**/*.ts"],

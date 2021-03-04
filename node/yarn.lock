@@ -25,6 +25,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/axios@^0.14.0":
+  version "0.14.0"
+  resolved "https://registry.yarnpkg.com/@types/axios/-/axios-0.14.0.tgz#ec2300fbe7d7dddd7eb9d3abf87999964cafce46"
+  integrity sha1-7CMA++fX3d1+udOr+HmZlkyvzkY=
+  dependencies:
+    axios "*"
+
 "@types/bluebird-global@^3.5.12":
   version "3.5.12"
   resolved "https://registry.yarnpkg.com/@types/bluebird-global/-/bluebird-global-3.5.12.tgz#aed115214e7e17718b9854c2e8e3a6235299fdf8"
@@ -396,6 +403,13 @@ axios-retry@^3.1.2:
   dependencies:
     is-retry-allowed "^1.1.0"
 
+axios@*:
+  version "0.21.1"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.1.tgz#22563481962f4d6bde9a76d516ef0e5d3c09b2b8"
+  integrity sha512-dKQiRHxGD9PPRIUNIWvZhPTPpl1rf/OxTYKsqKUDjBwYylTvV7SjSHJb9ratfyzM6wCdLCOYLzs73qpg5c4iGA==
+  dependencies:
+    follow-redirects "^1.10.0"
+
 axios@^0.19.2:
   version "0.19.2"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.19.2.tgz#3ea36c5d8818d0d5f8a8a97a6d36b86cdc00cb27"
@@ -738,6 +752,11 @@ follow-redirects@1.5.10:
   integrity sha512-0V5l4Cizzvqt5D44aTXbFZz+FtyXV1vrDN6qrelxtfYQKW0KO0W2T/hkE8xvGa/540LkZlkaUjO4ailYTFtHVQ==
   dependencies:
     debug "=3.1.0"
+
+follow-redirects@^1.10.0:
+  version "1.13.3"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.13.3.tgz#e5598ad50174c1bc4e872301e82ac2cd97f90267"
+  integrity sha512-DUgl6+HDzB0iEptNQEXLx/KhTmDb8tZUHSeLqpnjpknR70H0nC2t9N73BK6fN4hOvJ84pKlIQVQ4k5FFlBedKA==
 
 fresh@~0.5.2:
   version "0.5.2"
@@ -1538,9 +1557,9 @@ vary@^1.1.2:
   resolved "https://registry.yarnpkg.com/vary/-/vary-1.1.2.tgz#2299f02c6ded30d4a5961b0b9f74524a18f634fc"
   integrity sha1-IpnwLG3tMNSllhsLn3RSShj2NPw=
 
-"vtex.file-manager-graphql@http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager-graphql@0.3.0/public/@types/vtex.file-manager-graphql":
+"vtex.file-manager-graphql@https://media--storecomponents.myvtex.com/_v/private/typings/linked/v1/vtex.file-manager-graphql@0.3.0+build1614886334/public/@types/vtex.file-manager-graphql":
   version "0.3.0"
-  resolved "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager-graphql@0.3.0/public/@types/vtex.file-manager-graphql#601e8962c656e184a9f30b258b9441df5970bbdd"
+  resolved "https://media--storecomponents.myvtex.com/_v/private/typings/linked/v1/vtex.file-manager-graphql@0.3.0+build1614886334/public/@types/vtex.file-manager-graphql#15c8bc647546a7aad0da20d177e244ef6c24ba03"
 
 "vtex.file-manager@http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager@0.10.1/public/_types/react":
   version "0.0.0"
