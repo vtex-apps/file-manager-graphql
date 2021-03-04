@@ -1,3 +1,5 @@
+import type { ReadStream } from 'fs'
+
 import type { IOContext, InstanceOptions } from '@vtex/api'
 import { AppClient } from '@vtex/api'
 import { pathEq, pick } from 'ramda'
@@ -90,7 +92,7 @@ export default class FileManager extends AppClient {
 
   public saveFile = async (
     file: IncomingFile,
-    stream: FIXME,
+    stream: ReadStream,
     bucket: MutationUploadFileArgs['bucket']
   ) => {
     try {
@@ -100,13 +102,15 @@ export default class FileManager extends AppClient {
         'Content-Encoding': encoding,
       }
 
-      return await this.http.put(
+      const response = await this.http.put<string>(
         routes.FileUpload(bucket ?? DEFAULT_BUCKET, filename),
         stream,
         {
           headers,
         }
       )
+
+      return response
     } catch (e) {
       const status = e.statusCode || e?.response?.status || 500
       const extensions = pick(FORWARD_FIELDS, e.response)
@@ -117,9 +121,11 @@ export default class FileManager extends AppClient {
 
   public deleteFile = async ({ path, bucket }: MutationDeleteFileArgs) => {
     try {
-      return await this.http.delete(
+      const response = await this.http.delete(
         routes.FileDelete(bucket ?? DEFAULT_BUCKET, path)
       )
+
+      return response
     } catch (e) {
       if (e.statusCode === 404 || pathEq(['response', 'status'], 404, e)) {
         throw new FileNotFound(pick(FORWARD_FIELDS, e.response))

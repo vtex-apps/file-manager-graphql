@@ -1,0 +1,32 @@
+# --- New: Hackathon
+
+"""
+Filters and sorting to refine the files search. Array filters are joined with 'OR'.
+"""
+input FilesParamsInput {
+  filter: FilesFilterInput!
+  sorting: FilesSortingInput
+}
+
+input FilesFilterInput {
+  page: Int!
+  perPage: Int!
+  id: ID
+  name: String
+  mimetype: [String!]
+}
+
+input FilesSortingInput {
+  field: FilesSortByField
+  direction: SortingDirection
+}
+
+enum FilesSortByField {
+  name
+  mimetype
+}
+
+enum SortingDirection {
+  ASC
+  DSC
+}

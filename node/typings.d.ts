@@ -1,6 +1,7 @@
+import type { Clients } from './clients'
+import type { ServiceContext } from '@vtex/api'
+
 declare global {
-  import type { Clients } from './clients'
-  import type { ServiceContext } from '@vtex/api'
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type FIXME = any
 

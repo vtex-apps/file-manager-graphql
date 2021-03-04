@@ -1,0 +1,31 @@
+type File {
+  fileUrl: String!
+  mimetype: String!
+  encoding: String!
+}
+
+type Settings {
+  maxFileSizeMB: Int
+}
+
+# --- New: Hackathon
+
+type PagedFilesResponse {
+  data: [FileData!]!
+  paging: Paging!
+}
+
+type FileData {
+  id: ID!
+  name: String!
+  mimetype: String!
+  encoding: String!
+  url: String!
+}
+
+type Paging {
+  page: Int!
+  perPage: Int!
+  total: Int!
+  pages: Int!
+}
