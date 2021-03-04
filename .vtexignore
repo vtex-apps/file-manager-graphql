@@ -1,0 +1,10 @@
+.git/
+.eslintrc
+.gitignore
+package.json
+README.md
+CHANGELOG.md
+**/node_modules/**
+**/__tests__/**
+**/__mocks__/**
+**/setupTests.js

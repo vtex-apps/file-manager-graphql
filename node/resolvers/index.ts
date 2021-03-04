@@ -1,42 +1,64 @@
 import { v4 as uuidv4 } from 'uuid'
+import type {
+  QueryGetFileArgs,
+  QueryGetFileUrlArgs,
+  MutationUploadFileArgs,
+  MutationDeleteFileArgs,
+} from 'vtex.file-manager-graphql'
+
 import FileManager from '../FileManager'
 
 export const resolvers = {
   Query: {
-    getFile: async (root, args, ctx, info) =>  {
+    getFile: async (_root: null, args: QueryGetFileArgs, ctx: Context) => {
+      // TODO: Move to clients
       const fileManager = new FileManager(ctx.vtex)
-      const {path, width, height, aspect, bucket} = args
-      return await fileManager.getFile(path, width, height, aspect, bucket)
+
+      return fileManager.getFile(args)
     },
-    getFileUrl: async (root, args, ctx, info) => {
+    getFileUrl: async (
+      _root: null,
+      args: QueryGetFileUrlArgs,
+      ctx: Context
+    ) => {
       const fileManager = new FileManager(ctx.vtex)
-      const {path, bucket} = args
-      return await fileManager.getFileUrl(path, bucket)
+
+      return fileManager.getFileUrl(args)
     },
-    settings: async (root, args, ctx, info) => ({
-      maxFileSizeMB: 4
+    settings: async (_root: null, _args: null, _ctx: Context) => ({
+      maxFileSizeMB: 4,
     }),
   },
   Mutation: {
-    uploadFile: async (obj, args, ctx, info) => {
+    uploadFile: async (
+      _root: null,
+      args: MutationUploadFileArgs,
+      ctx: Context
+    ) => {
       const fileManager = new FileManager(ctx.vtex)
-      const {file, bucket} = args
-      const {stream, filename: name, mimetype, encoding} = await file
+      const { file, bucket } = args
+      const { stream, filename: name, mimetype, encoding } = await file
       const [extension] = name?.split('.')?.reverse()
       const filename = `${uuidv4()}.${extension}`
 
-      const incomingFile = {filename, mimetype, encoding}
+      const incomingFile = { filename, mimetype, encoding }
+
       return {
         encoding,
         mimetype,
         fileUrl: await fileManager.saveFile(incomingFile, stream, bucket),
       }
     },
-    deleteFile: async (obj, args, ctx, info) => {
+    deleteFile: async (
+      _root: null,
+      args: MutationDeleteFileArgs,
+      ctx: Context
+    ) => {
       const fileManager = new FileManager(ctx.vtex)
-      const {path, bucket} = args
-      await fileManager.deleteFile(path, bucket)
+
+      await fileManager.deleteFile(args)
+
       return true
-    }
-  }
+    },
+  },
 }

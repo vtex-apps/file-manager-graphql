@@ -1,23 +1,25 @@
 {
-  "name": "vtex.product-review-graphql-example",
-  "description": "GraphQL resolvers. Any required dependencies should be defined in this file.",
-  "version": "0.3.0",
+  "scripts": {
+    "verify-ts": "tsc --noEmit"
+  },
   "dependencies": {
     "apollo-upload-server": "^5.0.0",
-    "ramda": "^0.25.0",
+    "graphql": "^14.5.8",
+    "ramda": "^0.26.1",
     "uuid": "^8.2.0"
   },
   "devDependencies": {
-    "@vtex/api": "^3.0.0",
     "@types/bluebird-global": "^3.5.12",
+    "@types/graphql": "^14.2.0",
     "@types/jest": "^24.0.24",
     "@types/node": "^10.3.2",
-    "@types/ramda": "^0.27.38",
+    "@types/ramda": "^0.26.8",
     "@types/random-js": "^1.0.30",
+    "@types/uuid": "^8.3.0",
+    "@vtex/api": "^3.0.0",
+    "@vtex/tsconfig": "^0.5.6",
+    "typescript": "3.9.7",
     "vtex.file-manager": "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager@0.10.1/public/_types/react",
     "vtex.file-manager-graphql": "http://vtex.vtexassets.com/_v/public/typings/v1/vtex.file-manager-graphql@0.3.0/public/@types/vtex.file-manager-graphql"
-  },
-  "scripts": {
-    "lint": "tsc --noEmit && tslint -c tslint.json './**/*.ts'"
   }
 }
