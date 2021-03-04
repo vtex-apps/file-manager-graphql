@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "eslint --ext js,ts .",
     "format": "prettier --write \"**/*.{ts,js,json}\"",
-    "test": "yarn --cwd node test"
+    "test": "echo \"TODO tests :/\""
   },
   "husky": {
     "hooks": {
