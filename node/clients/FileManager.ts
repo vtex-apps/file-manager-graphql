@@ -1,5 +1,5 @@
 import type { IOContext, InstanceOptions } from '@vtex/api'
-import { HttpClient } from '@vtex/api'
+import { AppClient } from '@vtex/api'
 import { pathEq, pick } from 'ramda'
 import type {
   QueryGetFileArgs,
@@ -8,8 +8,8 @@ import type {
   MutationDeleteFileArgs,
 } from 'vtex.file-manager-graphql'
 
-import { FileNotFound } from './exceptions/fileNotFound'
-import { InternalServerError } from './exceptions/internalServerError'
+import { FileNotFound } from '../exceptions/fileNotFound'
+import { InternalServerError } from '../exceptions/internalServerError'
 
 const appId = process.env.VTEX_APP_ID
 const [runningAppName] = appId ? appId.split('@') : ['']
@@ -39,17 +39,15 @@ const routes = {
     `${routes.Assets()}/${bucket}/${path}?width=${width}&height=${height}&aspect=${aspect}`,
 }
 
-export default class FileManager {
-  private http: HttpClient
+export default class FileManager extends AppClient {
+  constructor(context: IOContext, options?: InstanceOptions) {
+    super('vtex.file-manager@0.x', context, options)
 
-  constructor(ioContext: IOContext, opts: InstanceOptions = {}) {
     if (runningAppName === '') {
       throw new InternalServerError(
         `Invalid path to access FileManger. Variable VTEX_APP_ID is not available.`
       )
     }
-
-    this.http = HttpClient.forWorkspace('file-manager.vtex', ioContext, opts)
   }
 
   public getFile = async ({
