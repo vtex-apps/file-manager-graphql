@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type {
   MutationUploadFileArgs,
   QueryGetFilesArgs,
+  MutationDeleteFileArgs,
 } from 'vtex.file-manager-graphql'
 
 import type FileManager from '../clients/FileManager'
@@ -93,4 +94,18 @@ export async function getFiles({
       pages: Math.ceil(total / perPage),
     },
   }
+}
+
+export async function deleteFile({
+  client,
+  masterData,
+  args,
+}: {
+  client: FileManager
+  masterData: MasterData
+  args: MutationDeleteFileArgs
+}) {
+  // First delete from file manager and if everything goes well, delete from MasterData
+  await client.deleteFile(args)
+  await masterData.deleteImageById(args.path.split('.')[0])
 }

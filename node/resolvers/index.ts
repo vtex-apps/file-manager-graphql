@@ -10,7 +10,7 @@ import type {
 } from 'vtex.file-manager-graphql'
 import type { AxiosError } from 'axios'
 
-import { uploadFile, getFiles } from '../services/upload'
+import { uploadFile, getFiles, deleteFile } from '../services/upload'
 
 export const resolvers = {
   Query: {
@@ -51,9 +51,9 @@ export const resolvers = {
     deleteFile: async (
       _root: null,
       args: MutationDeleteFileArgs,
-      { clients: { fileManager } }: Context
+      { clients: { fileManager, masterData } }: Context
     ) => {
-      await fileManager.deleteFile(args)
+      await deleteFile({ client: fileManager, masterData, args })
 
       return true
     },

@@ -47,6 +47,11 @@ export default class MasterData extends IOClient {
     ['id', 'url', 'name', 'encoding', 'mimetype', 'extension']
   )
 
+  public deleteImageById = this.getDocumentDeleterById<Image>(
+    IMAGE_DATA_ENTITY,
+    ['id', 'url', 'name', 'encoding', 'mimetype', 'extension']
+  )
+
   private getDocumentCreator<T>(dataEntityName: string) {
     return (data: T) =>
       this.http.post<{
@@ -64,6 +69,16 @@ export default class MasterData extends IOClient {
   ) {
     return (id: string) =>
       this.http.get<T | ''>(`/${dataEntityName}/documents/${id}`, {
+        params: this.getFieldsParams(fields),
+      })
+  }
+
+  private getDocumentDeleterById<T>(
+    dataEntityName: string,
+    fields?: Array<Extract<keyof T, string>>
+  ) {
+    return (id: string) =>
+      this.http.delete<T | ''>(`/${dataEntityName}/documents/${id}`, {
         params: this.getFieldsParams(fields),
       })
   }
