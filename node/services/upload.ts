@@ -68,19 +68,19 @@ export async function getFiles({
 
   const { data, headers } = await masterData.searchImage({
     first: perPage,
-    offset: page - 1,
+    offset: (page - 1) * perPage,
     _sort: `${sorting?.field ?? 'name'} ${sorting?.direction ?? 'ASC'}`,
-    _where: id
-      ? `id=${id}`
-      : [
-          name ? `(name="*${name}*")` : null,
-          mimetype?.length
-            ? // In case the query receives ['image'], match '*image*'
-              `(${mimetype.map((type) => `mimetype="*${type}*"`).join(' OR ')})`
-            : null,
-        ]
-          .filter((x) => x)
-          .join(' AND '),
+    _where: [
+      id ? `(id=${id})` : null,
+      // TODO: This is a hackathon ugly thing. Please never consider this
+      name ? `(name="*${name}*" OR id="*${name}*")` : null,
+      mimetype?.length
+        ? // In case the query receives ['image'], match '*image*'
+          `(${mimetype.map((type) => `mimetype="*${type}*"`).join(' OR ')})`
+        : null,
+    ]
+      .filter((x) => x)
+      .join(' OR '),
   })
 
   // 'rest-content-range': 'resources <offset>-<first>/<total>'
