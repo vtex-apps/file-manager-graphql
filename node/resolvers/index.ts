@@ -10,7 +10,7 @@ import type {
 } from 'vtex.file-manager-graphql'
 import type { AxiosError } from 'axios'
 
-import { uploadFile } from '../services/upload'
+import { uploadFile, getFiles } from '../services/upload'
 
 export const resolvers = {
   Query: {
@@ -35,34 +35,9 @@ export const resolvers = {
     getFiles: (
       _root: null,
       args: QueryGetFilesArgs,
-      _ctx: Context
-    ): PagedFilesResponse => {
-      const {
-        params: {
-          filter: { page, perPage },
-        },
-      } = args
-
-      const data = Array(args.params.filter.perPage)
-
-      data.fill({
-        id: 'dbb14472-af35-4993-92a1-eeebd054be19',
-        name: 'banner-custom.png',
-        mimetype: 'image/png',
-        encoding: '7bit',
-        url:
-          'https://storecomponents.vtexassets.com/assets/vtex.file-manager-graphql/images/dbb14472-af35-4993-92a1-eeebd054be19___8ae8396388e19678ddc56b1097692c98.png?width=100&height=200',
-      })
-
-      return {
-        data,
-        paging: {
-          page,
-          perPage,
-          total: page * perPage + 1,
-          pages: page + 1,
-        },
-      }
+      { clients: { masterData } }: Context
+    ): Promise<PagedFilesResponse> => {
+      return getFiles({ masterData, args })
     },
   },
   Mutation: {

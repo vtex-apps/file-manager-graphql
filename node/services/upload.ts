@@ -1,5 +1,8 @@
 import { v4 as uuidv4 } from 'uuid'
-import type { MutationUploadFileArgs } from 'vtex.file-manager-graphql'
+import type {
+  MutationUploadFileArgs,
+  QueryGetFilesArgs,
+} from 'vtex.file-manager-graphql'
 
 import type FileManager from '../clients/FileManager'
 import type MasterData from '../clients/MasterData'
@@ -46,4 +49,48 @@ export async function uploadFile({
   }
 
   return uploadedFile
+}
+
+export async function getFiles({
+  masterData,
+  args,
+}: {
+  masterData: MasterData
+  args: QueryGetFilesArgs
+}) {
+  const {
+    params: {
+      filter: { page, perPage, id, name, mimetype },
+      sorting,
+    },
+  } = args
+
+  const { data, headers } = await masterData.searchImage({
+    first: perPage,
+    offset: page - 1,
+    _sort: `${sorting?.field ?? 'name'} ${sorting?.direction ?? 'ASC'}`,
+    _where: id
+      ? `id=${id}`
+      : [
+          name ? `(name="*${name}*")` : null,
+          mimetype?.length
+            ? `(${mimetype.map((type) => `mimetype="${type}"`).join(' OR ')})`
+            : null,
+        ]
+          .filter((x) => x)
+          .join(' AND '),
+  })
+
+  // 'rest-content-range': 'resources <offset>-<first>/<total>'
+  const total = parseInt(headers['rest-content-range'].split('/')[1], 10)
+
+  return {
+    data,
+    paging: {
+      page,
+      perPage,
+      total,
+      pages: Math.ceil(total / perPage),
+    },
+  }
 }

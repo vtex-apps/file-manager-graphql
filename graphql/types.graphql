@@ -21,6 +21,7 @@ type FileData {
   mimetype: String!
   encoding: String!
   url: String!
+  extension: String!
 }
 
 type Paging {

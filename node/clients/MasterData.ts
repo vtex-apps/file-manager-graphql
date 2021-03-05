@@ -82,7 +82,7 @@ export default class MasterData extends IOClient {
       const lowerLimit =
         typeof offset !== 'undefined' && offset !== null ? offset : 0
 
-      if (!Number.isSafeInteger(offset) || offset < 1) {
+      if (!Number.isSafeInteger(first) || first < 1) {
         throw new Error(
           'The "first" parameter must be an interger bigger than 1.'
         )
