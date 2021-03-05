@@ -75,7 +75,8 @@ export async function getFiles({
       : [
           name ? `(name="*${name}*")` : null,
           mimetype?.length
-            ? `(${mimetype.map((type) => `mimetype="${type}"`).join(' OR ')})`
+            ? // In case the query receives ['image'], match '*image*'
+              `(${mimetype.map((type) => `mimetype="*${type}*"`).join(' OR ')})`
             : null,
         ]
           .filter((x) => x)
