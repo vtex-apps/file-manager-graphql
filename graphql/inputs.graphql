@@ -24,6 +24,8 @@ input FilesSortingInput {
 enum FilesSortByField {
   name
   mimetype
+  createdIn
+  lastInteractionIn
 }
 
 enum SortingDirection {
