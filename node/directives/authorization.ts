@@ -17,7 +17,8 @@ function checkForAuthorization(ctx: any, info: GraphQLResolveInfo) {
     vtex: { logger, adminUserAuthToken, storeUserAuthToken },
   } = ctx
 
-  const vtexIdToken = ctx.cookies.get('VtexIdclientAutCookie')
+  const vtexIdToken =
+    ctx.cookies.get('VtexIdclientAutCookie') ?? ctx.get('VtexIdclientAutCookie')
 
   if (!vtexIdToken) {
     logger.warn({
