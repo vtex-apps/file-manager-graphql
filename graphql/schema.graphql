@@ -10,16 +10,16 @@ type Settings {
 
 type Mutation {
   """Save file (returns file's immutable URL)"""
-  uploadFile(file: Upload!, bucket: String = "images"): File
+  uploadFile(file: Upload!, bucket: String = "images"): File @withAuthMetrics
   """Delete file from bucket"""
-  deleteFile(path: String!, bucket: String = "images"): Boolean!
+  deleteFile(path: String!, bucket: String = "images"): Boolean! @withAuthMetrics
 }
 
 type Query {
   """Get file’s immutable URL"""
-  getFileUrl(path: String!, bucket: String = "images"): String
+  getFileUrl(path: String!, bucket: String = "images"): String @withAuthMetrics
   """Get file"""
-  getFile(path: String!, width: Int = 1, height: Int = 2, aspect: Boolean = false, bucket: String = "images"): String
+  getFile(path: String!, width: Int = 1, height: Int = 2, aspect: Boolean = false, bucket: String = "images"): String @withAuthMetrics
   """Settings"""
-  settings: Settings
+  settings: Settings @withAuthMetrics
 }
