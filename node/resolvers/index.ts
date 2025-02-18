@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 
 import FileManager from '../FileManager'
+import { ServiceContext } from '@vtex/api'
 
 type FileManagerArgs = {
   path: string
@@ -17,14 +18,14 @@ type UploadFileArgs = {
 
 export const resolvers = {
   Query: {
-    getFile: async (_: unknown, args: FileManagerArgs, ctx: any) => {
+    getFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { path, width, height, aspect, bucket } = args
 
       const file = await fileManager.getFile(path, width, height, aspect, bucket)
       return file
     },
-    getFileUrl: async (_: unknown, args: FileManagerArgs, ctx: any) => {
+    getFileUrl: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { path, bucket } = args
 
@@ -36,7 +37,7 @@ export const resolvers = {
     }),
   },
   Mutation: {
-    uploadFile: async (_: unknown, args: UploadFileArgs, ctx: any) => {
+    uploadFile: async (_: unknown, args: UploadFileArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { file, bucket } = args
       const { stream, filename: name, mimetype, encoding } = await file
@@ -51,7 +52,7 @@ export const resolvers = {
         fileUrl: await fileManager.saveFile(incomingFile, stream, bucket),
       }
     },
-    deleteFile: async (_: unknown, args: FileManagerArgs, ctx: any) => {
+    deleteFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { path, bucket } = args
 
