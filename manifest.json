@@ -1,12 +1,22 @@
 {
   "name": "file-manager-graphql",
   "vendor": "vtex",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "title": "File Manager GraphQL",
   "description": "",
   "policies": [
     {
       "name": "vtex.file-manager:file-manager-read-write"
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "vtexid.vtex.com.br",
+        "path": "/api/vtexid/pub/authenticated/user"
+      }
+    },
+    {
+      "name": "sphinx-is-admin"
     }
   ],
   "dependencies": {
@@ -17,7 +27,7 @@
   },
   "builders": {
     "graphql": "1.x",
-    "node": "3.x",
+    "node": "7.x",
     "docs": "0.x"
   },
   "credentialType": "absolute",
