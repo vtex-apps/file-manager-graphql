@@ -37,6 +37,7 @@ export default class FileManager extends ExternalClient {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
+          'VtexIdclientAutCookie': context.authToken,
           'Content-Type': 'application/json',
           'X-Vtex-Use-Https': 'true',
         },
