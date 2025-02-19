@@ -12,7 +12,7 @@ type Mutation {
   """Save file (returns file's immutable URL)"""
   uploadFile(file: Upload!, bucket: String = "images"): File
   """Delete file from bucket"""
-  deleteFile(path: String!, bucket: String = "images"): Boolean!
+  deleteFile(path: String!, bucket: String = "images"): Boolean! @requiresAuth
 }
 
 type Query {

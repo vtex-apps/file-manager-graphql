@@ -31,12 +31,13 @@ export default class FileManager extends ExternalClient {
  
   constructor(protected context: IOContext, options?: InstanceOptions) {
     super(
-      `https://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
+      `http://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
       context,
       {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
+          'VtexIdclientAutCookie': context.authToken,
           'Content-Type': 'application/json',
           'X-Vtex-Use-Https': 'true',
         },

@@ -1,0 +1,1 @@
+directive @requiresAuth on FIELD_DEFINITION
