@@ -9,6 +9,9 @@ const [runningAppName] = appId ? appId.split('@') : ['']
 
 const FORWARD_FIELDS = ['status', 'statusText', 'data', 'stack', 'stackTrace']
 
+const pickForwardFields = (object: any) => 
+  ({ ...Object.fromEntries(FORWARD_FIELDS.map(field => [field, object[field]])) })
+
 const routes = {
   Assets: () => `/assets/${runningAppName}`,
   FileUpload: (bucket: string, path: string) =>
@@ -31,7 +34,7 @@ export default class FileManager extends ExternalClient {
  
   constructor(protected context: IOContext, options?: InstanceOptions) {
     super(
-      `https://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
+      `http://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
       context,
       {
         ...(options ?? {}),
@@ -56,9 +59,9 @@ export default class FileManager extends ExternalClient {
       return await this.http.get(
         routes.File(path, width, height, aspect, bucket)
       )
-    } catch (e) {
-      if (e.statusCode === 404 || e.pathEq(404, ['response', 'status'])) {
-        throw new FileNotFound(e.response.pick(FORWARD_FIELDS))
+    } catch (e) {      
+      if (e.statusCode === 404 || e.response?.status === 404) {
+        throw new FileNotFound(pickForwardFields(e.response))
       } else {
         throw e
       }
@@ -71,8 +74,8 @@ export default class FileManager extends ExternalClient {
       const file = await this.http.get(fileUrl)
       return file
     } catch (e) {
-      if (e.statusCode === 404) {
-        throw new FileNotFound(e.response.pick(FORWARD_FIELDS))
+      if (e.statusCode === 404 || e.response?.status === 404) {
+        throw new FileNotFound(pickForwardFields(e.response))
       } else {
         throw e
       }
@@ -91,8 +94,8 @@ export default class FileManager extends ExternalClient {
         headers,
       })
     } catch (e) {
-      const status = e.statusCode || e.path(['response', 'status']) || 500
-      const extensions = e.response.pick(FORWARD_FIELDS)
+      const status = e.statusCode || e.response?.status || 500
+      const extensions = pickForwardFields(e.response)
 
       throw new InternalServerError(extensions, 'Fail to save file', status)
     }
@@ -102,8 +105,8 @@ export default class FileManager extends ExternalClient {
     try {
       return await this.http.delete(routes.FileDelete(bucket, path))
     } catch (e) {
-      if (e.statusCode === 404 || e.pathEq([404, 'response', 'status'])) {
-        throw new FileNotFound(e.response.pick(FORWARD_FIELDS))
+      if (e.statusCode === 404 || e.response?.status === 404) {
+        throw new FileNotFound(pickForwardFields(e.response))
       } else {
         throw e
       }
