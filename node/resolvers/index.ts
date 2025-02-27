@@ -40,9 +40,11 @@ export const resolvers = {
     uploadFile: async (_: unknown, args: UploadFileArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { file, bucket } = args
-      const { stream, filename: name, mimetype, encoding } = await file
+      const loadedFile = await file
+      const {filename: name, mimetype, encoding } = loadedFile
       const [extension] = name?.split('.')?.reverse()
       const filename = `${uuidv4()}.${extension}`
+      const stream = loadedFile.createReadStream(filename)
 
       const incomingFile = { filename, mimetype, encoding }
 
