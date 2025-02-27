@@ -1,25 +1,30 @@
 {
   "compilerOptions": {
-    "types": [
-      "bluebird-global",
-      "jest",
-      "node"
-    ],
-    "lib": [
-      "dom",
-      "es2017",
-      "esnext.asynciterable"
-    ],
+    "types": ["node", "jest"],
+    "typeRoots": ["node_modules/@types"],
     "target": "es2017",
+    "lib": ["esnext"],
     "module": "commonjs",
-    "sourceMap": false,
-    "outDir": "service",
-    "allowJs": true
+    "moduleResolution": "node",
+    "allowJs": false,
+    "checkJs": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "noEmitOnError": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true
   },
   "typeAcquisition": {
     "enable": false
   },
-  "include": ["./**/*"],
-  "exclude": ["node_modules"],
-  "compileOnSave": true
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
 }

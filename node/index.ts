@@ -1,5 +1,8 @@
-import {resolvers} from './resolvers'
+import { resolvers } from './resolvers'
+import { Service } from '@vtex/api'
 
-export default {
-  graphql: resolvers
-}
+export default new Service({
+  graphql: {
+    resolvers
+  }
+})
