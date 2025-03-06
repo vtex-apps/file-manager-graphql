@@ -1,9 +1,9 @@
 # File Manager GraphQL
 
-This API is a GraphQL abstraction of the vtex.file-manager@0.x app, providing a unified interface for file management.
+This API is a GraphQL abstraction of the [vtex.file-manager@0.x](https://github.com/vtex/file-manager) app, providing a unified interface for file management.
 Usage
 
-### Usage
+## Usage
 To use this API, declare it in your manifest.json file:
 
 ```JSON
@@ -12,57 +12,66 @@ To use this API, declare it in your manifest.json file:
 }
 ```
 
-### Queries
+## Queries
 
-getFileUrl
+### getFileUrl
 Returns the immutable URL of a file.
-Arguments:
-path: File path
-bucket: Bucket name
-Return: String
-getFile
-Returns a file.
-Arguments:
-path: File path
-width: Image width
-height: Image height
-aspect: Maintain image aspect ratio
-bucket: Bucket name
-Return: String
-settings
+
+| Arguments | Type | Description |
+| --- | --- | --- |
+| path | [String](#string) | File path |
+| bucket | [String](#string) |  Bucket name |
+
+### getFile
+
+| Arguments | Type | Description |
+| --- | --- | --- |
+| path | [String](#string) | File path |
+| bucket | [String](#string) |  Bucket name |
+| width | [Int](#int) |  Image width |
+| height | [Int](#int) |  Image height |
+| aspect | [Boolean](#boolean) |  Maintain image aspect ratio |
+
+
+### settings
 Returns the API settings.
-Return: Settings
 
-### Mutations
+## Mutations
 
-uploadFile
+### uploadFile
 Saves a file and returns its immutable URL.
-Arguments:
-file: File to be uploaded
-bucket: Bucket name
-Return: File
-deleteFile
+
+| Arguments | Type | Description |
+| --- | --- | --- |
+| file | [File](#file) | File to be uploaded |
+| bucket | [String](#string) |  Bucket name |
+
+
+
+### deleteFile
 Deletes a file from a bucket.
-Arguments:
-path: File path
-bucket: Bucket name
-Return: Boolean
+
+| Arguments | Type | Description |
+| --- | --- | --- |
+| path | [string](#string) | File path |
+| bucket | [String](#string) |  Bucket name |
+
 
 ## Types
 
 ### File
 
-| Field | Argument | Type | Description |
-| --- | --- | --- | --- |
-| fileUrl | [String](#string) |  | File URL |
-| mimetype | [String](#string) |  | File MIME type |
-| encoding | [String](#string) |  | File encoding |
+| Field | Type | Description |
+| --- | --- | --- |
+| fileUrl | [String](#string) | File URL |
+| mimetype | [String](#string) |  File MIME type |
+| encoding | [String](#string) |  File encoding |
 
 ### Settings
 
-| Field | Argument | Type | Description |
-| --- | --- | --- | --- |
-| maxFileSizeMB | [Int](#int) |  | Maximum allowed file size (in MB) |
+| Field | Type | Description |
+| --- | --- | --- |
+| maxFileSizeMB | [Int](#int) | Maximum allowed file size (in MB) |
 
 
 ### Examples
