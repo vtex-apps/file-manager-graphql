@@ -7,6 +7,16 @@
   "policies": [
     {
       "name": "vtex.file-manager:file-manager-read-write"
+    },
+    {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "vtexid.vtex.com.br",
+        "path": "/api/vtexid/pub/authenticated/user"
+      }
+    },
+    {
+      "name": "sphinx-is-admin"
     }
   ],
   "dependencies": {
