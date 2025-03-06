@@ -9,9 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.5.0] - 2025-03-06
 
-## [0.4.0] - 2025-02-27
-
-### Fixed
+### Added
 - Auth requirement for deletion
 
 ## [0.4.0] - 2025-02-18
