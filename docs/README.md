@@ -65,7 +65,7 @@ Deletes a file from a bucket.
 
 | Arguments | Type | Description |
 | --- | --- | --- |
-| path | [string](#string) | File path |
+| path | [String](#string) | File path |
 | bucket | [String](#string) |  Bucket name |
 
 
