@@ -1,7 +1,19 @@
 # File Manager GraphQL
 
+A GraphQL service for managing files in VTEX applications. This service provides a simple interface for uploading, retrieving, and deleting files with support for image resizing.
+
 This API is a GraphQL abstraction of the [vtex.file-manager@0.x](https://github.com/vtex/file-manager) app, providing a unified interface for file management.
 Usage
+
+## Features
+
+- File uploads with automatic UUID-based naming
+- File retrieval with optional image resizing
+- File URL generation for direct access
+- File deletion
+- Authentication requirements for sensitive operations
+- Support for different storage buckets
+
 
 ## Usage
 To use this API, declare it in your manifest.json file:
@@ -106,3 +118,25 @@ mutation {
   }
 }
 ```
+
+## Scalars
+
+### Boolean
+
+The `Boolean` scalar type represents `true` or `false`.
+
+### Int
+
+The `Int` scalar type represents non-fractional signed whole numeric values. Int can represent values between -(2^31) and 2^31 - 1.
+
+### String
+
+The `String` scalar type represents textual data, represented as UTF-8 character sequences. The String type is most often used by GraphQL to represent free-form human-readable text.
+
+## Security
+
+This service implements authentication directives to ensure that sensitive operations like file uploads and deletions are properly authorized.
+
+## License
+
+This project is licensed under the terms specified in the `package.json` file.
