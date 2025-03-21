@@ -16,6 +16,13 @@ type UploadFileArgs = {
   bucket: string
 }
 
+const isValidFileFormat = (extension: string, mimetype: string) => {
+  const allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf']
+  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
+
+  return allowedExtensions.includes(extension) && allowedMimeTypes.includes(mimetype)
+}
+
 export const resolvers = {
   Query: {
     getFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
@@ -43,6 +50,11 @@ export const resolvers = {
       const loadedFile = await file
       const {filename: name, mimetype, encoding } = loadedFile
       const [extension] = name?.split('.')?.reverse()
+
+      if (!isValidFileFormat(extension, mimetype)) {
+        throw new Error('Invalid file format') 
+      }
+
       const filename = `${uuidv4()}.${extension}`
       const stream = loadedFile.createReadStream(filename)
 
