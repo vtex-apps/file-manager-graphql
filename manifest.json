@@ -14,9 +14,6 @@
         "host": "vtexid.vtex.com.br",
         "path": "/api/vtexid/pub/authenticated/user"
       }
-    },
-    {
-      "name": "sphinx-is-admin"
     }
   ],
   "dependencies": {

@@ -92,6 +92,7 @@ export default class FileManager extends ExternalClient {
 
       return await this.http.put(routes.FileUpload(bucket, filename), stream, {
         headers,
+        metric: 'file-manager-save-file',
       })
     } catch (e) {
       const status = e.statusCode || e.response?.status || 500
@@ -103,7 +104,9 @@ export default class FileManager extends ExternalClient {
 
   deleteFile = async (path: string, bucket: string) => {
     try {
-      return await this.http.delete(routes.FileDelete(bucket, path))
+      return await this.http.delete(routes.FileDelete(bucket, path), {
+        metric: 'file-manager-delete-file',
+      })
     } catch (e) {
       if (e.statusCode === 404 || e.response?.status === 404) {
         throw new FileNotFound(pickForwardFields(e.response))
