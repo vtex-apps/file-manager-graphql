@@ -17,8 +17,16 @@ type UploadFileArgs = {
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
-  const allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf']
-  const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
+  const allowedExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'doc', 'docx']
+  const allowedMimeTypes = [
+    'image/png', 
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
 
   return allowedExtensions.includes(extension) && allowedMimeTypes.includes(mimetype)
 }
