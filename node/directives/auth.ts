@@ -1,21 +1,19 @@
 import { defaultFieldResolver, GraphQLField } from 'graphql'
 import { SchemaDirectiveVisitor } from 'graphql-tools'
 
-const canBypass = (email: string) => {
-  return email.includes('@vtex.com')
-}
-
 export const authFromCookie = async (ctx: any) => {
   const {
-    clients: { sphinx, vtexID },
+    clients: { vtexID },
     vtex: { authToken },
   } = ctx
 
+  
   const vtexIdToken =
     ctx.cookies.get('VtexIdclientAutCookie') ??
     ctx.request.header.vtexidclientautcookie
+
   if (!vtexIdToken) {
-    return 'VtexIdclientAutCookie not found.'
+    return 'User must be logged to access this resource'
   }
 
   const { user: email } = (await vtexID.getIdUser(vtexIdToken, authToken)) || {
@@ -23,15 +21,6 @@ export const authFromCookie = async (ctx: any) => {
   }
   if (!email) {
     return 'Could not find user specified by token.'
-  }
-
-  if (canBypass(email)) {
-    return true
-  }
-
-  const isAdminUser = await sphinx.isAdmin(email)
-  if (!isAdminUser) {
-    return 'User is not admin and can not access resource.'
   }
 
   return true
