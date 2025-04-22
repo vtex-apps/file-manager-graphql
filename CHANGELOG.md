@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- svg type to allowed file formats
+
 ## [0.6.3] - 2025-04-07
 ### Changed
 - Auth rule for mutations
