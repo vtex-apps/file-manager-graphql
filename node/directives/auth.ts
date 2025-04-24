@@ -3,7 +3,7 @@ import { SchemaDirectiveVisitor } from 'graphql-tools'
 
 export const authFromCookie = async (ctx: any) => {
   const {
-    clients: { vtexID },
+    clients: { sphinx, vtexID },
     vtex: { authToken },
   } = ctx
 
@@ -21,6 +21,11 @@ export const authFromCookie = async (ctx: any) => {
   }
   if (!email) {
     return 'Could not find user specified by token.'
+  }
+
+  const isAdminUser = await sphinx.isAdmin(email)
+  if (!isAdminUser) {
+    return 'User is not admin and can not access resource.'
   }
 
   return true
