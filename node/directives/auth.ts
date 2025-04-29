@@ -3,7 +3,7 @@ import { SchemaDirectiveVisitor } from 'graphql-tools'
 
 import { ALLOW_LIST } from '../config/allowList'
 
-export const authFromCookie = async (ctx: any) => {
+export const authFromCookie = async (ctx: any, operationName: string) => {
   const {
     clients: { sphinx, vtexID },
     vtex: { authToken },
@@ -25,10 +25,13 @@ export const authFromCookie = async (ctx: any) => {
     return 'Could not find user specified by token.'
   }
 
-  const isAdminUser = await sphinx.isAdmin(email)
+  if (operationName === 'deleteFile') {
+    // Only admin users can delete files
+    const isAdminUser = await sphinx.isAdmin(email)
 
-  if (!isAdminUser) {
-    return 'User is not admin and can not access resource.'
+    if (!isAdminUser) {
+      return 'User is not admin and can not access resource.'
+    }
   }
 
   return true
@@ -52,7 +55,7 @@ export class Authorization extends SchemaDirectiveVisitor {
       }
 
       if (!isAllowed) {
-        const cookieAllowsAccess = await authFromCookie(ctx)
+        const cookieAllowsAccess = await authFromCookie(ctx, operationName)
 
         if (cookieAllowsAccess !== true) {
           throw new Error(cookieAllowsAccess)
