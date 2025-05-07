@@ -1,7 +1,7 @@
 {
   "name": "file-manager-graphql",
   "vendor": "vtex",
-  "version": "0.6.5-beta.0",
+  "version": "0.7.0",
   "title": "File Manager GraphQL",
   "description": "",
   "policies": [
