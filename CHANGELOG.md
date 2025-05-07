@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-05-07
+
+### Added
+- admin authorization requested when using delete mutation
+- allow list for authorized accounts
+
 ## [0.6.4] - 2025-04-24
 
 ### Added
