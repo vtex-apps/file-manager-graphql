@@ -1,7 +1,7 @@
 {
   "name": "vtex.file-manager-graphql",
   "description": "GraphQL resolvers. Any required dependencies should be defined in this file.",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "dependencies": {
     "@vtex/api": "6.48.0",
     "apollo-upload-server": "^5.0.0",
