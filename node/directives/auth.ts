@@ -1,13 +1,14 @@
 import { defaultFieldResolver, GraphQLField } from 'graphql'
 import { SchemaDirectiveVisitor } from 'graphql-tools'
 
-export const authFromCookie = async (ctx: any) => {
+import { ALLOW_LIST } from '../config/allowList'
+
+export const authFromCookie = async (ctx: any, operationName: string) => {
   const {
-    clients: { vtexID },
+    clients: { sphinx, vtexID },
     vtex: { authToken },
   } = ctx
 
-  
   const vtexIdToken =
     ctx.cookies.get('VtexIdclientAutCookie') ??
     ctx.request.header.vtexidclientautcookie
@@ -19,8 +20,18 @@ export const authFromCookie = async (ctx: any) => {
   const { user: email } = (await vtexID.getIdUser(vtexIdToken, authToken)) || {
     user: '',
   }
+
   if (!email) {
     return 'Could not find user specified by token.'
+  }
+
+  if (operationName === 'deleteFile') {
+    // Only admin users can delete files
+    const isAdminUser = await sphinx.isAdmin(email)
+
+    if (!isAdminUser) {
+      return 'User is not admin and can not access resource.'
+    }
   }
 
   return true
@@ -29,16 +40,29 @@ export const authFromCookie = async (ctx: any) => {
 export class Authorization extends SchemaDirectiveVisitor {
   public visitFieldDefinition(field: GraphQLField<any, any>) {
     const { resolve = defaultFieldResolver } = field
-    field.resolve = async (root, args, ctx, info) => {
-      const cookieAllowsAccess = await authFromCookie(ctx)
 
-      if (cookieAllowsAccess !== true) {
-        throw new Error(cookieAllowsAccess)
+    // eslint-disable-next-line max-params
+    field.resolve = async (root, args, ctx, info) => {
+      const operationName = info.fieldName
+      let isAllowed = false
+
+      if (operationName === 'uploadFile') {
+        const isInAllowList = ALLOW_LIST.includes(ctx.vtex.account)
+
+        if (isInAllowList) {
+          isAllowed = true
+        }
+      }
+
+      if (!isAllowed) {
+        const cookieAllowsAccess = await authFromCookie(ctx, operationName)
+
+        if (cookieAllowsAccess !== true) {
+          throw new Error(cookieAllowsAccess)
+        }
       }
 
       return resolve(root, args, ctx, info)
     }
   }
 }
-
-

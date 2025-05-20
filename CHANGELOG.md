@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- More accounts to the allow list
+
+## [0.7.0] - 2025-05-07
+
+### Added
+- admin authorization requested when using delete mutation
+- allow list for authorized accounts
+
 ## [0.6.5] - 2025-05-14
+
 ### Added
 - xls, xlsx and txt added to allowed file formats
 
