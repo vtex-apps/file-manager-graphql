@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from 'uuid'
+// eslint-disable-next-line prettier/prettier 
+import type { ServiceContext } from '@vtex/api'
 
 import FileManager from '../FileManager'
-import { ServiceContext } from '@vtex/api'
+
 
 type FileManagerArgs = {
   path: string
@@ -17,36 +19,24 @@ type UploadFileArgs = {
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
-  const allowedExtensions = [
-    'png',
-    'jpg',
-    'jpeg',
-    'gif',
-    'webp',
-    'pdf',
-    'doc',
-    'docx',
-    'svg',
-    'xls',
-    'xlsx',
-    'txt'
-  ]
-  
-  const allowedMimeTypes = [
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain'
-  ]
 
-  return allowedExtensions.includes(extension) && allowedMimeTypes.includes(mimetype)
+
+  const allowedFileTypes = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  txt: 'text/plain',
+}
+
+  return extension in allowedFileTypes && allowedFileTypes[extension as keyof typeof allowedFileTypes] === mimetype
 }
 
 export const resolvers = {
@@ -56,6 +46,7 @@ export const resolvers = {
       const { path, width, height, aspect, bucket } = args
 
       const file = await fileManager.getFile(path, width, height, aspect, bucket)
+
       return file
     },
     getFileUrl: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
@@ -63,6 +54,7 @@ export const resolvers = {
       const { path, bucket } = args
 
       const file = await fileManager.getFileUrl(path, bucket)
+
       return file
     },
     settings: async () => ({
