@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- More accounts to the allow list
+
 ## [0.7.1] - 2025-05-20
 
 ### Added
