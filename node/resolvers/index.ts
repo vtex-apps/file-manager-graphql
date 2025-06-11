@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
+import { JSDOM } from 'jsdom'
+import createDOMPurify from 'dompurify'
 // eslint-disable-next-line prettier/prettier 
 import type { ServiceContext } from '@vtex/api'
 
@@ -20,7 +22,14 @@ type UploadFileArgs = {
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
 
+  if (!extension || !mimetype) {
+    return false
+  }
 
+  // Normalize extension to lowercase
+  const normalizedExtension = extension.toLowerCase()
+
+  // Define allowed file types with their corresponding MIME types
   const allowedFileTypes = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -36,7 +45,25 @@ const isValidFileFormat = (extension: string, mimetype: string) => {
   txt: 'text/plain',
 }
 
-  return extension in allowedFileTypes && allowedFileTypes[extension as keyof typeof allowedFileTypes] === mimetype
+  if(!(extension in allowedFileTypes)) {
+    return false
+  }
+
+  return normalizedExtension in allowedFileTypes && allowedFileTypes[normalizedExtension as keyof typeof allowedFileTypes] === mimetype
+}
+
+const isValidSVGFile = async (loadedFile: any) => {
+    const fileBuffer = await loadedFile.createReadStream().toArray()
+    const fileString = Buffer.concat(fileBuffer).toString('utf8')
+        
+    const {window} = new JSDOM('')
+    const DOMPurify = createDOMPurify(window)
+
+    const cleanSvgString = DOMPurify.sanitize(fileString, {
+      USE_PROFILES: { svg: true },
+    })
+        
+    return cleanSvgString === fileString
 }
 
 export const resolvers = {
@@ -45,7 +72,7 @@ export const resolvers = {
       const fileManager = new FileManager(ctx.vtex)
       const { path, width, height, aspect, bucket } = args
 
-      const file = await fileManager.getFile(path, width, height, aspect, bucket)
+      const file = await fileManager.getFile({path, width, height, aspect, bucket})
 
       return file
     },
@@ -71,6 +98,18 @@ export const resolvers = {
 
       if (!isValidFileFormat(extension, mimetype)) {
         throw new Error('Invalid file format') 
+      }
+
+      // Validate SVG files separately
+      // SVG files require additional validation to prevent XSS attacks
+      // and other security issues, so we check if the file is SVG
+      // and sanitize it if necessary.         
+
+      if (mimetype === 'image/svg+xml') {     
+        const isSafe = await isValidSVGFile(loadedFile)
+          if (!isSafe) {            
+            throw new Error('Invalid or malicious SVG file')
+          }   
       }
 
       const filename = `${uuidv4()}.${extension}`

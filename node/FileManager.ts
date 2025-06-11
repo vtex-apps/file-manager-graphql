@@ -48,18 +48,24 @@ export default class FileManager extends ExternalClient {
     )
   }
 
-  getFile = async (
-    path: string,
-    width: number,
-    height: number,
-    aspect: boolean,
+  public getFile = async ({
+    path,
+    width,
+    height,
+    aspect,
+    bucket,
+  }: {
+    path: string
+    width: number
+    height: number
+    aspect: boolean
     bucket: string
-  ) => {
+  }) => {
     try {
       return await this.http.get(
         routes.File(path, width, height, aspect, bucket)
       )
-    } catch (e) {      
+    } catch (e) {
       if (e.statusCode === 404 || e.response?.status === 404) {
         throw new FileNotFound(pickForwardFields(e.response))
       } else {
