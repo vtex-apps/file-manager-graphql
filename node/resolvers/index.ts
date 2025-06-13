@@ -5,6 +5,7 @@ import createDOMPurify from 'dompurify'
 import type { ServiceContext } from '@vtex/api'
 
 import FileManager from '../FileManager'
+import { Readable } from 'stream'
 
 
 type FileManagerArgs = {
@@ -52,7 +53,7 @@ const isValidFileFormat = (extension: string, mimetype: string) => {
   return normalizedExtension in allowedFileTypes && allowedFileTypes[normalizedExtension as keyof typeof allowedFileTypes] === mimetype
 }
 
-const isValidSVGFile = async (loadedFile: any) => {
+const sanitizeSvgFile = async (loadedFile: any) => {
     const fileBuffer = await loadedFile.createReadStream().toArray()
     const fileString = Buffer.concat(fileBuffer).toString('utf8')
         
@@ -62,8 +63,13 @@ const isValidSVGFile = async (loadedFile: any) => {
     const cleanSvgString = DOMPurify.sanitize(fileString, {
       USE_PROFILES: { svg: true },
     })
-        
-    return cleanSvgString === fileString
+    
+    return {
+      isSafe: typeof cleanSvgString === 'string' &&
+      cleanSvgString.trim().length > 0 &&
+      cleanSvgString.includes('<svg'),
+      sanitizedContent: cleanSvgString,
+    }
 }
 
 export const resolvers = {
@@ -92,7 +98,7 @@ export const resolvers = {
     uploadFile: async (_: unknown, args: UploadFileArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex)
       const { file, bucket } = args
-      const loadedFile = await file
+      let loadedFile = await file
       const {filename: name, mimetype, encoding } = loadedFile
       const [extension] = name?.split('.')?.reverse()
 
@@ -105,15 +111,19 @@ export const resolvers = {
       // and other security issues, so we check if the file is SVG
       // and sanitize it if necessary.         
 
-      if (mimetype === 'image/svg+xml') {     
-        const isSafe = await isValidSVGFile(loadedFile)
+      if (mimetype === 'image/svg+xml') {             
+        const {isSafe, sanitizedContent} = await sanitizeSvgFile(loadedFile)
           if (!isSafe) {            
-            throw new Error('Invalid or malicious SVG file')
-          }   
+            throw new Error('Forced attempt to upload unsafe SVG file with no valid content')
+          }
+          
+        const sanitizedBuffer = Buffer.from(sanitizedContent, 'utf8')
+
+        loadedFile.createReadStream = () => Readable.from(sanitizedBuffer)  
       }
 
       const filename = `${uuidv4()}.${extension}`
-      const stream = loadedFile.createReadStream(filename)
+      const stream = loadedFile.createReadStream()
 
       const incomingFile = { filename, mimetype, encoding }
 
