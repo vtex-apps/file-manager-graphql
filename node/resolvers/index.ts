@@ -114,8 +114,9 @@ export const resolvers = {
       if (mimetype === 'image/svg+xml') {             
         const {isSafe, sanitizedContent} = await sanitizeSvgFile(loadedFile)
           if (!isSafe) {            
-            throw new Error('Invalid or malicious SVG file')
+            throw new Error('Forced attempt to upload unsafe SVG file with no valid content')
           }
+          
         const sanitizedBuffer = Buffer.from(sanitizedContent, 'utf8')
 
         loadedFile.createReadStream = () => Readable.from(sanitizedBuffer)  
