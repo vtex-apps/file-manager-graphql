@@ -63,7 +63,11 @@ const isValidSVGFile = async (loadedFile: any) => {
       USE_PROFILES: { svg: true },
     })
         
-    return cleanSvgString === fileString
+    return (
+      typeof cleanSvgString === 'string' &&
+      cleanSvgString.trim().length > 0 &&
+      cleanSvgString.includes('<svg')
+    )
 }
 
 export const resolvers = {
