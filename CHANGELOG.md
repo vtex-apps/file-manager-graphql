@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.7.4] - 2025-06-16
+
 ### Changed
 - Validation to a valid svg file since dompurify also normalizes the string
 
