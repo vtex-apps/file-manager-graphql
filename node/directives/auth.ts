@@ -54,9 +54,6 @@ async function checkAuthorizationRestrictions(
         restriction.productCode,
         restriction.resourceCode
       )
-
-      console.log(`User ${email} can access resource: ${canAccess} - ${ restriction.productCode} - ${ 
-        restriction.resourceCode}`)
     
       if (canAccess) return true
       throw new Error(restriction.errorMessage)
@@ -81,7 +78,6 @@ export class Authorization extends SchemaDirectiveVisitor {
     field.resolve = async (root, args, ctx, info) => {
       const operationName = info.fieldName
       const email = await getUserEmail(ctx)
-      console.log(`User email: ${email} - Operation: ${operationName}`)
       await checkAuthorizationRestrictions({ ctx, operationName, args, email })
       return resolve(root, args, ctx, info)
     }
