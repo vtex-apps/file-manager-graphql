@@ -16,6 +16,13 @@
       }
     },
     {
+      "name": "outbound-access",
+      "attrs": {
+        "host": "{{account}}.vtexcommercestable.com.br",
+        "path": "/api/license-manager/pvt/accounts/{{account}}/products/*"
+      }
+    },
+    {
       "name": "sphinx-is-admin"
     }
   ],

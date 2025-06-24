@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+- Bucket restrictions when uploading files
+
 ## [0.7.4] - 2025-06-16
 
 ### Changed

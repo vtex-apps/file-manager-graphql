@@ -1,5 +1,4 @@
-export const ALLOW_LIST = [
-  'storecomponents',
+export const ALLOW_LIST = [  
   'adidasuy',
   'amakha',
   'ambientegourmetb2b',
