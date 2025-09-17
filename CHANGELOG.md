@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+- Logic to get autcookie for production stores
+
 ## [0.7.5] - 2025-08-18
 
 ## [0.7.4] - 2025-06-16
