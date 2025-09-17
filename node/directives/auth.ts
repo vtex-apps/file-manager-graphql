@@ -11,8 +11,8 @@ export const authFromCookie = async (ctx: any, operationName: string) => {
 
   const vtexIdToken =
     ctx.cookies.get('VtexIdclientAutCookie') ??
-    ctx.cookies.get('VtexIdclientAutCookie_' + ctx.vtex.account) ??
-    ctx.request.header.vtexidclientautcookie  
+    ctx.request.header.vtexidclientautcookie ??
+    ctx.cookies.get('VtexIdclientAutCookie_' + ctx.vtex.account)
 
   if (!vtexIdToken) {
     return 'User must be logged to access this resource'
