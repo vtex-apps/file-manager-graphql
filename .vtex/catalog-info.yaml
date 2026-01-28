@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: file-manager-graphql
+  description: A GraphQL service for managing files in VTEX applications. This
+    service provides a simple interface for uploading, retrieving, and deleting
+    files with support for image resizing.\n\nThis API is a GraphQL abstraction
+    of the vtex.file-manager@0.x app, providing a unified interface for file
+    management.
+  tags:
+    - typescript
+  annotations:
+    vtex.com/janus-acronym: ""
+    vtex.com/o11y-os-index: ""
+    grafana/dashboard-selector: ""
+    github.com/project-slug: vtex-apps/file-manager-graphql
+    vtex.com/platform-flow-id: ""
+    backstage.io/techdocs-ref: dir:../
+    vtex.com/application-id: XZ4DUQLD
+spec:
+  lifecycle: stable
+  owner: te-0013
+  type: backend-api
+  dependsOn: []
