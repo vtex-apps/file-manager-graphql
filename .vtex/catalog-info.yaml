@@ -17,6 +17,8 @@ metadata:
     vtex.com/platform-flow-id: Merch#8,CommDev#1
     backstage.io/techdocs-ref: dir:../
     vtex.com/application-id: XZ4DUQLD
+    vtex.com/sdd-check-skip: 'true'
+    vtex.com/sdd-check-skip-reason: Non-core component. SDD adoption deferred to next adoption wave
 spec:
   lifecycle: stable
   owner: te-0013
