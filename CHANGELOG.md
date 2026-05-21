@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.7.7] - 2026-05-21
+
 ### Security
 
 - Migrate `VtexID` client from deprecated `GET pub/authenticated/user` (vtexid.vtex.com.br) to `POST credential/validate` on account-scoped `{account}.vtexcommercestable.com.br`, preventing cross-account token validation bypass
