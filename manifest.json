@@ -9,6 +9,9 @@
       "name": "vtex.file-manager:file-manager-read-write"
     },
     {
+      "name": "vtex.file-manager:file-manager-bucket-config-rw"
+    },
+    {
       "name": "outbound-access",
       "attrs": {
         "host": "vtexid.vtex.com.br",
