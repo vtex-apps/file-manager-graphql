@@ -126,7 +126,7 @@ describe('FileManager policies methods', () => {
       'AUTHENTICATED'
     )
 
-    expect(http.post).toHaveBeenCalledWith('/policies/mybucket/admin', {
+    expect(http.post).toHaveBeenCalledWith('/bucket-access-policies/mybucket/admin', {
       readAccess: 'public',
       writeAccess: 'authenticated',
     })
@@ -174,7 +174,7 @@ describe('FileManager policies methods', () => {
 
     const result = await fileManager.listPolicies()
 
-    expect(http.get).toHaveBeenCalledWith('/policies')
+    expect(http.get).toHaveBeenCalledWith('/bucket-access-policies')
     expect(result.nextMarker).toBeNull()
     expect(result.policies).toHaveLength(2)
     expect(result.policies[0]).toEqual({
@@ -213,7 +213,7 @@ describe('FileManager policies methods', () => {
 
     await fileManager.listPolicies('next-page-token')
 
-    expect(http.get).toHaveBeenCalledWith('/policies?marker=next-page-token')
+    expect(http.get).toHaveBeenCalledWith('/bucket-access-policies?marker=next-page-token')
   })
 
   it('getPolicy maps a single raw response and preserves null policies', async () => {
@@ -231,7 +231,7 @@ describe('FileManager policies methods', () => {
 
     const result = await fileManager.getPolicy('b1')
 
-    expect(http.get).toHaveBeenCalledWith('/policies/b1')
+    expect(http.get).toHaveBeenCalledWith('/bucket-access-policies/b1')
     expect(result).toEqual({
       bucket: 'b1',
       effectivePolicy: {
@@ -250,7 +250,7 @@ describe('FileManager policies methods', () => {
 
     const result = await fileManager.deleteAdminPolicy('b1')
 
-    expect(http.delete).toHaveBeenCalledWith('/policies/b1/admin')
+    expect(http.delete).toHaveBeenCalledWith('/bucket-access-policies/b1/admin')
     expect(result).toBeUndefined()
   })
 
