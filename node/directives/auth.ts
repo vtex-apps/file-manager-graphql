@@ -3,15 +3,21 @@ import { SchemaDirectiveVisitor } from 'graphql-tools'
 
 import { ALLOW_LIST } from '../config/allowList'
 
+export const resolveUserToken = (ctx: any): string | undefined => {
+  const token =
+    ctx.cookies.get('VtexIdclientAutCookie') ??
+    ctx.request.header.vtexidclientautcookie ??
+    ctx.cookies.get(`VtexIdclientAutCookie_${ctx.vtex.account}`)
+
+  return token || undefined
+}
+
 export const authFromCookie = async (ctx: any, operationName: string) => {
   const {
     clients: { sphinx, vtexID },
   } = ctx
 
-  const vtexIdToken =
-    ctx.cookies.get('VtexIdclientAutCookie') ??
-    ctx.request.header.vtexidclientautcookie ??
-    ctx.cookies.get(`VtexIdclientAutCookie_${ctx.vtex.account}`)
+  const vtexIdToken = resolveUserToken(ctx)
 
   if (!vtexIdToken) {
     return 'User must be logged to access this resource'

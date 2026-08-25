@@ -30,9 +30,69 @@ const routes = {
     `${routes.Assets()}/${bucket}/${path}?width=${width}&height=${height}&aspect=${aspect}`,
 }
 
+export type GraphQLAccessLevel =
+  | 'PUBLIC'
+  | 'AUTHENTICATED'
+  | 'ACCOUNT_ADMINISTRATOR'
+
+export const toWireAccessLevel = (level: GraphQLAccessLevel): string => {
+  switch (level) {
+    case 'PUBLIC':
+      return 'public'
+    case 'AUTHENTICATED':
+      return 'authenticated'
+    case 'ACCOUNT_ADMINISTRATOR':
+      return 'account-administrator'
+    default:
+      return level
+  }
+}
+
+export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
+  switch (level) {
+    case 'public':
+      return 'PUBLIC'
+    case 'authenticated':
+      return 'AUTHENTICATED'
+    case 'account-administrator':
+      return 'ACCOUNT_ADMINISTRATOR'
+    default:
+      return 'PUBLIC'
+  }
+}
+
+const mapBucketPolicyFromWire = (policy: any): any => {
+  if (!policy) {
+    return policy
+  }
+
+  return {
+    ...policy,
+    readAccess: fromWireAccessLevel(policy.readAccess),
+    writeAccess: fromWireAccessLevel(policy.writeAccess),
+  }
+}
+
+export const mapPolicyViewFromWire = (raw: any): any => {
+  if (!raw) {
+    return raw
+  }
+
+  return {
+    ...raw,
+    effectivePolicy: mapBucketPolicyFromWire(raw.effectivePolicy),
+    manifestPolicy: raw.manifestPolicy
+      ? mapBucketPolicyFromWire(raw.manifestPolicy)
+      : null,
+    adminPolicy: raw.adminPolicy
+      ? mapBucketPolicyFromWire(raw.adminPolicy)
+      : null,
+  }
+}
+
 export default class FileManager extends ExternalClient {
  
-  constructor(protected context: IOContext, options?: InstanceOptions) {
+  constructor(protected context: IOContext, options?: InstanceOptions, userToken?: string) {
     super(
       `http://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
       context,
@@ -40,7 +100,7 @@ export default class FileManager extends ExternalClient {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
-          'VtexIdclientAutCookie': context.authToken,
+          ...(userToken ? { VtexIdclientAutCookie: userToken } : {}),
           'Content-Type': 'application/json',
           'X-Vtex-Use-Https': 'true',
         },
@@ -121,4 +181,37 @@ export default class FileManager extends ExternalClient {
       }
     }
   }
+
+  public listPolicies = async (
+    marker?: string
+  ): Promise<{ policies: any[]; nextMarker: string | null }> => {
+    const qs = marker ? `?marker=${encodeURIComponent(marker)}` : ''
+    const raw = await this.http.get(`/policies${qs}`)
+    return {
+      policies: Array.isArray(raw?.policies)
+        ? raw.policies.map(mapPolicyViewFromWire)
+        : [],
+      nextMarker: raw?.nextMarker ?? null,
+    }
+  }
+
+  public getPolicy = async (bucket: string): Promise<any> => {
+    const raw = await this.http.get(`/policies/${bucket}`)
+    return mapPolicyViewFromWire(raw)
+  }
+
+  public setAdminPolicy = async (
+    bucket: string,
+    readAccess: string,
+    writeAccess: string
+  ): Promise<any> => {
+    const raw = await this.http.post(`/policies/${bucket}/admin`, {
+      readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
+      writeAccess: toWireAccessLevel(writeAccess as GraphQLAccessLevel),
+    })
+    return mapBucketPolicyFromWire(raw)
+  }
+
+  public deleteAdminPolicy = async (bucket: string): Promise<any> =>
+    this.http.delete(`/policies/${bucket}/admin`)
 }
