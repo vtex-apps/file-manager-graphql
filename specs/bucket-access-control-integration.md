@@ -1,6 +1,6 @@
 # Bucket Access Control Integration
 
-> **Status**: Draft
+> **Status**: Approved
 > **Created**: 2026-08-07
 > **Updated**: 2026-08-25
 > **Epic**: STR-773
@@ -97,6 +97,7 @@ This spec covers both parts owned by `file-manager-graphql` (correct token forwa
 - The new `/policies/*` proxy methods must reuse the same `ExternalClient`/`FileManager` HTTP infrastructure already used for file operations, not introduce a second client.
 - `listBucketPolicies` must not perform N+1 calls — it is one or more calls to `GET /policies` (paginated), never one call per bucket.
 - Unlike US-1, US-2/US-3 **do** require a new app-to-app authorization grant: `vtex.file-manager`'s current `policies.json` only scopes `file-manager-read-write` over `.../:/assets/*`, which does not cover `/policies/*`. This app's `manifest.json` must declare whatever new resource policy `vtex.file-manager` publishes for `/policies/*` (e.g. `file-manager-bucket-config-rw` or similar) — without it, `kube-router` rejects every `/policies/*` call with `403` before the request reaches file-manager's controller, regardless of the caller's LicenseManager permissions. This is a coarse app-to-app gate (which apps may call this path at all), distinct from and in addition to file-manager's own LicenseManager `file-manager-bucket-config` check (which user is authorized once the call is let through) — the router-level policy determines eligibility to call, not permission to act.
+- **NFR-O11y**: Structured logging (no PII) on every `/policies/*` operation (`listBucketPolicies`, `getBucketPolicy`, `setBucketPolicy`, `deleteBucketPolicy`), including the target `bucket` and the outcome (`200`/`403`/other status) reported by `vtex.file-manager`; no new tracing span is required beyond what the underlying `ExternalClient` already emits for outbound HTTP calls.
 
 ### Out of Scope
 
