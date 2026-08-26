@@ -186,7 +186,7 @@ export default class FileManager extends ExternalClient {
     marker?: string
   ): Promise<{ policies: any[]; nextMarker: string | null }> => {
     const qs = marker ? `?marker=${encodeURIComponent(marker)}` : ''
-    const raw = await this.http.get(`/bucket-access-policies${qs}`)
+    const raw = await this.http.get(`/policies${qs}`)
     return {
       policies: Array.isArray(raw?.policies)
         ? raw.policies.map(mapPolicyViewFromWire)
@@ -196,7 +196,7 @@ export default class FileManager extends ExternalClient {
   }
 
   public getPolicy = async (bucket: string): Promise<any> => {
-    const raw = await this.http.get(`/bucket-access-policies/${bucket}`)
+    const raw = await this.http.get(`/policies/${bucket}`)
     return mapPolicyViewFromWire(raw)
   }
 
@@ -205,7 +205,7 @@ export default class FileManager extends ExternalClient {
     readAccess: string,
     writeAccess: string
   ): Promise<any> => {
-    const raw = await this.http.post(`/bucket-access-policies/${bucket}/admin`, {
+    const raw = await this.http.post(`/policies/${bucket}/admin`, {
       readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
       writeAccess: toWireAccessLevel(writeAccess as GraphQLAccessLevel),
     })
@@ -213,5 +213,5 @@ export default class FileManager extends ExternalClient {
   }
 
   public deleteAdminPolicy = async (bucket: string): Promise<any> =>
-    this.http.delete(`/bucket-access-policies/${bucket}/admin`)
+    this.http.delete(`/policies/${bucket}/admin`)
 }
