@@ -12,6 +12,18 @@ export const resolveUserToken = (ctx: any): string | undefined => {
   return token || undefined
 }
 
+// Operations that manage bucket access policies are as sensitive as deleteFile:
+// gating them here on isAdmin avoids an unauthorized request ever reaching
+// file-manager (which would reject it anyway via License Manager, but only
+// after the round-trip).
+const ADMIN_ONLY_OPERATIONS = [
+  'deleteFile',
+  'setBucketPolicy',
+  'deleteBucketPolicy',
+  'listBucketPolicies',
+  'getBucketPolicy',
+]
+
 export const authFromCookie = async (ctx: any, operationName: string) => {
   const {
     clients: { sphinx, vtexID },
@@ -31,8 +43,7 @@ export const authFromCookie = async (ctx: any, operationName: string) => {
     return 'Could not find user specified by token.'
   }
 
-  if (operationName === 'deleteFile') {
-    // Only admin users can delete files
+  if (ADMIN_ONLY_OPERATIONS.includes(operationName)) {
     const isAdminUser = await sphinx.isAdmin(email)
 
     if (!isAdminUser) {
