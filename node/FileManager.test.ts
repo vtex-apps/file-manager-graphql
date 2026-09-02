@@ -86,14 +86,12 @@ describe('access level helpers', () => {
     }
   })
 
-  it('fromWireAccessLevel fails closed to ACCOUNT_ADMINISTRATOR for unrecognized or missing values', () => {
-    expect(fromWireAccessLevel('unexpected-value')).toBe('ACCOUNT_ADMINISTRATOR')
-    expect(fromWireAccessLevel(undefined as unknown as string)).toBe(
-      'ACCOUNT_ADMINISTRATOR'
+  it('fromWireAccessLevel throws on unrecognized or missing values instead of guessing', () => {
+    expect(() => fromWireAccessLevel('unexpected-value')).toThrow(
+      'Unrecognized wire access level: unexpected-value'
     )
-    expect(fromWireAccessLevel(null as unknown as string)).toBe(
-      'ACCOUNT_ADMINISTRATOR'
-    )
+    expect(() => fromWireAccessLevel(undefined as unknown as string)).toThrow()
+    expect(() => fromWireAccessLevel(null as unknown as string)).toThrow()
   })
 })
 
@@ -253,15 +251,21 @@ describe('FileManager policies methods', () => {
     })
   })
 
-  it('deleteAdminPolicy calls the admin policy delete route', async () => {
+  it('deleteAdminPolicy calls the admin policy delete route and returns the backend body unchanged', async () => {
     const { fileManager, http } = makeClient()
 
-    http.delete.mockResolvedValue(undefined)
+    http.delete.mockResolvedValue({
+      bucket: 'b1',
+      removedAt: '2026-09-01T00:00:00.000Z',
+    })
 
     const result = await fileManager.deleteAdminPolicy('b1')
 
     expect(http.delete).toHaveBeenCalledWith('/policies//b1/admin')
-    expect(result).toBeUndefined()
+    expect(result).toEqual({
+      bucket: 'b1',
+      removedAt: '2026-09-01T00:00:00.000Z',
+    })
   })
 
   it('listPolicies propagates an HTTP rejection unchanged', async () => {
@@ -347,7 +351,10 @@ describe('FileManager single-bucket policy routes include the running app id', (
       '/policies/vtex.file-manager-graphql/b1'
     )
 
-    http.post.mockResolvedValue({})
+    http.post.mockResolvedValue({
+      readAccess: 'public',
+      writeAccess: 'public',
+    })
     await fileManager.setAdminPolicy('b1', 'PUBLIC', 'PUBLIC')
 
     expect(http.post).toHaveBeenCalledWith(
@@ -376,7 +383,10 @@ describe('FileManager single-bucket policy routes include the running app id', (
       '/policies/vtex.file-manager-graphql/weird%2Fbucket%3Fname'
     )
 
-    http.post.mockResolvedValue({})
+    http.post.mockResolvedValue({
+      readAccess: 'public',
+      writeAccess: 'public',
+    })
     await fileManager.setAdminPolicy(unsafeBucket, 'PUBLIC', 'PUBLIC')
 
     expect(http.post).toHaveBeenCalledWith(

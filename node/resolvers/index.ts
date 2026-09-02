@@ -8,6 +8,7 @@ import { Readable } from 'stream'
 
 import { resolveUserToken } from '../directives/auth'
 import FileManager from '../FileManager'
+import { withPolicyLogging } from '../utils/policyLogger'
 
 
 type FileManagerArgs = {
@@ -112,22 +113,40 @@ export const resolvers = {
     listBucketPolicies: async (_: unknown, __: unknown, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
 
-      const allPolicies: any[] = []
-      let marker: string | undefined
+      return withPolicyLogging(
+        {
+          operation: 'listBucketPolicies',
+          bucket: null,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        async () => {
+          const allPolicies: any[] = []
+          let marker: string | undefined
 
-      do {
-        const page = await fileManager.listPolicies(marker)
-        allPolicies.push(...page.policies)
-        marker = page.nextMarker ?? undefined
-      } while (marker)
+          do {
+            const page = await fileManager.listPolicies(marker)
+            allPolicies.push(...page.policies)
+            marker = page.nextMarker ?? undefined
+          } while (marker)
 
-      return allPolicies
+          return allPolicies
+        }
+      )
     },
     getBucketPolicy: async (_: unknown, args: GetBucketPolicyArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { bucket } = args
 
-      return fileManager.getPolicy(bucket)
+      return withPolicyLogging(
+        {
+          operation: 'getBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.getPolicy(bucket)
+      )
     },
   },
   Mutation: {
@@ -181,15 +200,29 @@ export const resolvers = {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { bucket, readAccess, writeAccess } = args
 
-      return fileManager.setAdminPolicy(bucket, readAccess, writeAccess)
+      return withPolicyLogging(
+        {
+          operation: 'setBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.setAdminPolicy(bucket, readAccess, writeAccess)
+      )
     },
     deleteBucketPolicy: async (_: unknown, args: DeleteBucketPolicyArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { bucket } = args
 
-      await fileManager.deleteAdminPolicy(bucket)
-
-      return true
+      return withPolicyLogging(
+        {
+          operation: 'deleteBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.deleteAdminPolicy(bucket)
+      )
     },
   },
 }

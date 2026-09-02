@@ -11,6 +11,11 @@ type BucketPolicy {
   updatedBy: String
 }
 
+type DeleteBucketPolicyResult {
+  bucket: String!
+  removedAt: String!
+}
+
 type BucketPolicyView {
   """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps."""
   app: String!
@@ -38,7 +43,7 @@ type Mutation {
   """Set admin policy for a bucket"""
   setBucketPolicy(bucket: String!, readAccess: AccessLevel!, writeAccess: AccessLevel!): BucketPolicy @requiresAuth
   """Delete admin policy for a bucket"""
-  deleteBucketPolicy(bucket: String!): Boolean! @requiresAuth
+  deleteBucketPolicy(bucket: String!): DeleteBucketPolicyResult! @requiresAuth
 }
 
 type Query {

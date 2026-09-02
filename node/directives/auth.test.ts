@@ -3,11 +3,15 @@ import { authFromCookie, resolveUserToken } from './auth'
 const buildCtx = ({
   cookie,
   header,
+  perAccountCookie,
+  account = 'myaccount',
   isAdmin,
   idUser,
 }: {
   cookie?: string
   header?: string
+  perAccountCookie?: string
+  account?: string
   isAdmin?: boolean
   idUser?: { user: string } | null
 } = {}) => {
@@ -15,6 +19,10 @@ const buildCtx = ({
 
   if (cookie) {
     cookies.set('VtexIdclientAutCookie', cookie)
+  }
+
+  if (perAccountCookie) {
+    cookies.set(`VtexIdclientAutCookie_${account}`, perAccountCookie)
   }
 
   return {
@@ -36,7 +44,7 @@ const buildCtx = ({
     request: {
       header: { vtexidclientautcookie: header },
     },
-    vtex: { account: 'myaccount' },
+    vtex: { account },
   }
 }
 
@@ -51,6 +59,37 @@ describe('resolveUserToken', () => {
     const ctx = buildCtx({ header: 'header-token' })
 
     expect(resolveUserToken(ctx)).toBe('header-token')
+  })
+
+  it('falls back to the per-account cookie (VtexIdclientAutCookie_{account}) when the plain cookie and header are absent', () => {
+    const ctx = buildCtx({
+      perAccountCookie: 'per-account-token',
+      account: 'myaccount',
+    })
+
+    expect(resolveUserToken(ctx)).toBe('per-account-token')
+  })
+
+  it('prefers the plain cookie and header over the per-account cookie', () => {
+    const ctx = buildCtx({
+      cookie: 'cookie-token',
+      perAccountCookie: 'per-account-token',
+    })
+
+    expect(resolveUserToken(ctx)).toBe('cookie-token')
+
+    const ctxHeaderOnly = buildCtx({
+      header: 'header-token',
+      perAccountCookie: 'per-account-token',
+    })
+
+    expect(resolveUserToken(ctxHeaderOnly)).toBe('header-token')
+  })
+
+  it('returns undefined when no token source is present', () => {
+    const ctx = buildCtx()
+
+    expect(resolveUserToken(ctx)).toBeUndefined()
   })
 })
 

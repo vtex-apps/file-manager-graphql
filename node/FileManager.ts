@@ -56,9 +56,9 @@ export const toWireAccessLevel = (level: GraphQLAccessLevel): string => {
   }
 }
 
-// Fail closed on unrecognized/missing wire values: defaulting to PUBLIC would silently
-// surface an unknown or corrupt policy as the most permissive level, which is unsafe for an
-// access-control feature. ACCOUNT_ADMINISTRATOR is the most restrictive level instead.
+// Fail closed on unrecognized/missing wire values (PR #34 review, mendescamara): silently
+// mapping an unknown value to PUBLIC would mask a contract error/mismatch as a potentially
+// insecure representation. Throwing surfaces it loudly instead of ever guessing.
 export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
   switch (level) {
     case 'public':
@@ -68,7 +68,7 @@ export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
     case 'account-administrator':
       return 'ACCOUNT_ADMINISTRATOR'
     default:
-      return 'ACCOUNT_ADMINISTRATOR'
+      throw new Error(`Unrecognized wire access level: ${level}`)
   }
 }
 
