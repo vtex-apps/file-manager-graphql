@@ -85,6 +85,16 @@ describe('access level helpers', () => {
       expect(fromWireAccessLevel(toWireAccessLevel(value))).toBe(value)
     }
   })
+
+  it('fromWireAccessLevel fails closed to ACCOUNT_ADMINISTRATOR for unrecognized or missing values', () => {
+    expect(fromWireAccessLevel('unexpected-value')).toBe('ACCOUNT_ADMINISTRATOR')
+    expect(fromWireAccessLevel(undefined as unknown as string)).toBe(
+      'ACCOUNT_ADMINISTRATOR'
+    )
+    expect(fromWireAccessLevel(null as unknown as string)).toBe(
+      'ACCOUNT_ADMINISTRATOR'
+    )
+  })
 })
 
 describe('FileManager policies methods', () => {
@@ -126,7 +136,7 @@ describe('FileManager policies methods', () => {
       'AUTHENTICATED'
     )
 
-    expect(http.post).toHaveBeenCalledWith('/policies/mybucket/admin', {
+    expect(http.post).toHaveBeenCalledWith('/policies//mybucket/admin', {
       readAccess: 'public',
       writeAccess: 'authenticated',
     })
@@ -231,7 +241,7 @@ describe('FileManager policies methods', () => {
 
     const result = await fileManager.getPolicy('b1')
 
-    expect(http.get).toHaveBeenCalledWith('/policies/b1')
+    expect(http.get).toHaveBeenCalledWith('/policies//b1')
     expect(result).toEqual({
       bucket: 'b1',
       effectivePolicy: {
@@ -250,7 +260,7 @@ describe('FileManager policies methods', () => {
 
     const result = await fileManager.deleteAdminPolicy('b1')
 
-    expect(http.delete).toHaveBeenCalledWith('/policies/b1/admin')
+    expect(http.delete).toHaveBeenCalledWith('/policies//b1/admin')
     expect(result).toBeUndefined()
   })
 
@@ -290,5 +300,95 @@ describe('FileManager policies methods', () => {
     http.delete.mockRejectedValue(err)
 
     await expect(fileManager.deleteAdminPolicy('b1')).rejects.toEqual(err)
+  })
+})
+
+describe('FileManager single-bucket policy routes include the running app id', () => {
+  // The file-manager backend composes its canonical bucket key from {app}/{bucket}
+  // (BucketNamespaceHelper.ComposeBucketKey) and routes single-bucket policy calls as
+  // /policies/:app/:bucket(/admin). Regression coverage for the mismatch where this client
+  // called /policies/:bucket(/admin) without the app segment, which 404'd against that route.
+  const originalAppId = process.env.VTEX_APP_ID
+
+  afterEach(() => {
+    process.env.VTEX_APP_ID = originalAppId
+    jest.resetModules()
+  })
+
+  const loadClientWithAppId = async (appId: string | undefined) => {
+    jest.resetModules()
+    if (appId === undefined) {
+      delete process.env.VTEX_APP_ID
+    } else {
+      process.env.VTEX_APP_ID = appId
+    }
+
+    const { default: IsolatedFileManager } = await import('./FileManager')
+    const fileManager = new (IsolatedFileManager as any)(
+      { account: 'testaccount', workspace: 'testworkspace' },
+      undefined,
+      'resolved-user-token-123'
+    )
+    const http = { get: jest.fn(), post: jest.fn(), delete: jest.fn() }
+    ;(fileManager as any).http = http
+
+    return { fileManager, http }
+  }
+
+  it('derives the app segment from VTEX_APP_ID (stripping the @version suffix)', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+
+    http.get.mockResolvedValue({ bucket: 'b1' })
+    await fileManager.getPolicy('b1')
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/b1'
+    )
+
+    http.post.mockResolvedValue({})
+    await fileManager.setAdminPolicy('b1', 'PUBLIC', 'PUBLIC')
+
+    expect(http.post).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/b1/admin',
+      expect.any(Object)
+    )
+
+    http.delete.mockResolvedValue(undefined)
+    await fileManager.deleteAdminPolicy('b1')
+
+    expect(http.delete).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/b1/admin'
+    )
+  })
+
+  it('encodes bucket names so they cannot introduce extra path segments', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+    const unsafeBucket = 'weird/bucket?name'
+
+    http.get.mockResolvedValue({ bucket: unsafeBucket })
+    await fileManager.getPolicy(unsafeBucket)
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/weird%2Fbucket%3Fname'
+    )
+
+    http.post.mockResolvedValue({})
+    await fileManager.setAdminPolicy(unsafeBucket, 'PUBLIC', 'PUBLIC')
+
+    expect(http.post).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/weird%2Fbucket%3Fname/admin',
+      expect.any(Object)
+    )
+
+    http.delete.mockResolvedValue(undefined)
+    await fileManager.deleteAdminPolicy(unsafeBucket)
+
+    expect(http.delete).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/weird%2Fbucket%3Fname/admin'
+    )
   })
 })

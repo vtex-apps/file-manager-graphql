@@ -12,6 +12,8 @@ type BucketPolicy {
 }
 
 type BucketPolicyView {
+  """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps."""
+  app: String!
   bucket: String!
   effectivePolicy: BucketPolicy!
   manifestPolicy: BucketPolicy

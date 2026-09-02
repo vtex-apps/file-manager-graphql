@@ -28,6 +28,14 @@ const routes = {
     bucket: string
   ) =>
     `${routes.Assets()}/${bucket}/${path}?width=${width}&height=${height}&aspect=${aspect}`,
+  // The backend composes the canonical bucket key from {app}/{bucket} (see
+  // BucketNamespaceHelper.ComposeBucketKey), so every single-bucket policy route must include
+  // this app's own id as the `:app` segment -- otherwise these 404 against
+  // /policies/:app/:bucket(/admin), unlike the app-agnostic /policies list route. The bucket
+  // name is user-supplied, so it's encoded to keep it a single path segment and avoid it being
+  // misinterpreted as extra route segments (e.g. "/" or "?" in the value).
+  Policy: (bucket: string) =>
+    `/policies/${runningAppName}/${encodeURIComponent(bucket)}`,
 }
 
 export type GraphQLAccessLevel =
@@ -48,6 +56,9 @@ export const toWireAccessLevel = (level: GraphQLAccessLevel): string => {
   }
 }
 
+// Fail closed on unrecognized/missing wire values: defaulting to PUBLIC would silently
+// surface an unknown or corrupt policy as the most permissive level, which is unsafe for an
+// access-control feature. ACCOUNT_ADMINISTRATOR is the most restrictive level instead.
 export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
   switch (level) {
     case 'public':
@@ -57,7 +68,7 @@ export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
     case 'account-administrator':
       return 'ACCOUNT_ADMINISTRATOR'
     default:
-      return 'PUBLIC'
+      return 'ACCOUNT_ADMINISTRATOR'
   }
 }
 
@@ -196,7 +207,7 @@ export default class FileManager extends ExternalClient {
   }
 
   public getPolicy = async (bucket: string): Promise<any> => {
-    const raw = await this.http.get(`/policies/${bucket}`)
+    const raw = await this.http.get(routes.Policy(bucket))
     return mapPolicyViewFromWire(raw)
   }
 
@@ -205,7 +216,7 @@ export default class FileManager extends ExternalClient {
     readAccess: string,
     writeAccess: string
   ): Promise<any> => {
-    const raw = await this.http.post(`/policies/${bucket}/admin`, {
+    const raw = await this.http.post(`${routes.Policy(bucket)}/admin`, {
       readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
       writeAccess: toWireAccessLevel(writeAccess as GraphQLAccessLevel),
     })
@@ -213,5 +224,5 @@ export default class FileManager extends ExternalClient {
   }
 
   public deleteAdminPolicy = async (bucket: string): Promise<any> =>
-    this.http.delete(`/policies/${bucket}/admin`)
+    this.http.delete(`${routes.Policy(bucket)}/admin`)
 }
