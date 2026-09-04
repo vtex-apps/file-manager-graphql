@@ -26,16 +26,19 @@ type UploadFileArgs = {
 
 type GetBucketPolicyArgs = {
   bucket: string
+  app?: string
 }
 
 type SetBucketPolicyArgs = {
   bucket: string
   readAccess: string
   writeAccess: string
+  app?: string
 }
 
 type DeleteBucketPolicyArgs = {
   bucket: string
+  app?: string
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
@@ -136,7 +139,7 @@ export const resolvers = {
     },
     getBucketPolicy: async (_: unknown, args: GetBucketPolicyArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
-      const { bucket } = args
+      const { bucket, app } = args
 
       return withPolicyLogging(
         {
@@ -145,7 +148,7 @@ export const resolvers = {
           account: ctx.vtex.account,
           workspace: ctx.vtex.workspace,
         },
-        () => fileManager.getPolicy(bucket)
+        () => fileManager.getPolicy(bucket, app)
       )
     },
   },
@@ -198,7 +201,7 @@ export const resolvers = {
     },
     setBucketPolicy: async (_: unknown, args: SetBucketPolicyArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
-      const { bucket, readAccess, writeAccess } = args
+      const { bucket, readAccess, writeAccess, app } = args
 
       return withPolicyLogging(
         {
@@ -207,12 +210,12 @@ export const resolvers = {
           account: ctx.vtex.account,
           workspace: ctx.vtex.workspace,
         },
-        () => fileManager.setAdminPolicy(bucket, readAccess, writeAccess)
+        () => fileManager.setAdminPolicy(bucket, readAccess, writeAccess, app)
       )
     },
     deleteBucketPolicy: async (_: unknown, args: DeleteBucketPolicyArgs, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
-      const { bucket } = args
+      const { bucket, app } = args
 
       return withPolicyLogging(
         {
@@ -221,7 +224,7 @@ export const resolvers = {
           account: ctx.vtex.account,
           workspace: ctx.vtex.workspace,
         },
-        () => fileManager.deleteAdminPolicy(bucket)
+        () => fileManager.deleteAdminPolicy(bucket, app)
       )
     },
   },

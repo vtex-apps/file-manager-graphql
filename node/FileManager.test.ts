@@ -401,4 +401,73 @@ describe('FileManager single-bucket policy routes include the running app id', (
       '/policies/vtex.file-manager-graphql/weird%2Fbucket%3Fname/admin'
     )
   })
+
+  // Regression coverage (PR #34 review, mendescamara): listBucketPolicies returns entries owned
+  // by other apps (BucketPolicyView.app), but getPolicy/setAdminPolicy/deleteAdminPolicy used to
+  // always target runningAppName regardless of that value, so operating on another app's bucket
+  // either 404'd or silently created/mutated an unrelated entry under this app's own namespace
+  // instead of the one the caller actually saw. Passing `app` explicitly must address that exact
+  // composite key.
+  it('uses the explicit app argument instead of runningAppName when provided', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+
+    http.get.mockResolvedValue({ bucket: 'assets-builder' })
+    await fileManager.getPolicy('assets-builder', 'vtex.builder-hub')
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.builder-hub/assets-builder'
+    )
+
+    http.post.mockResolvedValue({
+      readAccess: 'public',
+      writeAccess: 'public',
+    })
+    await fileManager.setAdminPolicy(
+      'assets-builder',
+      'PUBLIC',
+      'PUBLIC',
+      'vtex.builder-hub'
+    )
+
+    expect(http.post).toHaveBeenCalledWith(
+      '/policies/vtex.builder-hub/assets-builder/admin',
+      expect.any(Object)
+    )
+
+    http.delete.mockResolvedValue(undefined)
+    await fileManager.deleteAdminPolicy('assets-builder', 'vtex.builder-hub')
+
+    expect(http.delete).toHaveBeenCalledWith(
+      '/policies/vtex.builder-hub/assets-builder/admin'
+    )
+  })
+
+  it('still falls back to runningAppName when app is omitted, preserving prior behavior', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+
+    http.get.mockResolvedValue({ bucket: 'images' })
+    await fileManager.getPolicy('images')
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/images'
+    )
+  })
+
+  it('encodes an explicit app argument so it cannot introduce extra path segments', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+    const unsafeApp = 'vtex.evil/../other-app'
+
+    http.get.mockResolvedValue({ bucket: 'images' })
+    await fileManager.getPolicy('images', unsafeApp)
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.evil%2F..%2Fother-app/images'
+    )
+  })
 })

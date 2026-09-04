@@ -40,10 +40,10 @@ type Mutation {
   uploadFile(file: Upload!, bucket: String = "images"): File @requiresAuth
   """Delete file from bucket"""
   deleteFile(path: String!, bucket: String = "images"): Boolean! @requiresAuth
-  """Set admin policy for a bucket"""
-  setBucketPolicy(bucket: String!, readAccess: AccessLevel!, writeAccess: AccessLevel!): BucketPolicy @requiresAuth
-  """Delete admin policy for a bucket"""
-  deleteBucketPolicy(bucket: String!): DeleteBucketPolicyResult! @requiresAuth
+  """Set admin policy for a bucket. `app` defaults to this app's own bucket namespace when omitted -- pass the `app` value returned by listBucketPolicies to target a bucket owned by a different app."""
+  setBucketPolicy(bucket: String!, readAccess: AccessLevel!, writeAccess: AccessLevel!, app: String): BucketPolicy @requiresAuth
+  """Delete admin policy for a bucket. `app` defaults to this app's own bucket namespace when omitted -- pass the `app` value returned by listBucketPolicies to target a bucket owned by a different app."""
+  deleteBucketPolicy(bucket: String!, app: String): DeleteBucketPolicyResult! @requiresAuth
 }
 
 type Query {
@@ -55,6 +55,6 @@ type Query {
   settings: Settings
   """List bucket policies"""
   listBucketPolicies: [BucketPolicyView!]! @requiresAuth
-  """Get bucket policy"""
-  getBucketPolicy(bucket: String!): BucketPolicyView @requiresAuth
+  """Get bucket policy. `app` defaults to this app's own bucket namespace when omitted -- pass the `app` value returned by listBucketPolicies to target a bucket owned by a different app."""
+  getBucketPolicy(bucket: String!, app: String): BucketPolicyView @requiresAuth
 }

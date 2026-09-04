@@ -2,7 +2,7 @@
 
 > **Status**: Approved
 > **Created**: 2026-08-07
-> **Updated**: 2026-09-03
+> **Updated**: 2026-09-04
 > **Epic**: STR-773
 > **RFC**: Controle de Acesso a Arquivos no vtex.file-manager (Phases 4 and 9)
 > **Upstream dependency**: `vtex.file-manager` — spec `bucket-access-control` (US-2, US-4)
@@ -60,18 +60,21 @@ This spec covers both parts owned by `file-manager-graphql` (correct token forwa
 - **Story**: As an account administrator using the Admin Panel, I want to list all configured bucket policies and inspect a single bucket's policy, so that I can review the current access configuration before changing it.
 - **Acceptance Criteria**:
   - **Given** an admin with the `file-manager-bucket-config` resource, **when** they query `listBucketPolicies`, **then** the query proxies `GET /policies` on file-manager and returns every configured bucket with `effectivePolicy`, `manifestPolicy`, and `adminPolicy`, paginating through file-manager's `nextMarker` until every page is consumed, so the GraphQL caller receives a single complete list without needing to know about file-manager's internal pagination.
-  - **Given** an admin with the `file-manager-bucket-config` resource, **when** they query `getBucketPolicy(bucket)`, **then** the query proxies `GET /policies/{bucket}` and returns `effectivePolicy`, `manifestPolicy`, and `adminPolicy` for that bucket (`null` for unconfigured sources).
+  - **Given** an admin with the `file-manager-bucket-config` resource, **when** they query `getBucketPolicy(bucket, app)`, **then** the query proxies `GET /policies/{app}/{bucket}` and returns `effectivePolicy`, `manifestPolicy`, and `adminPolicy` for that bucket (`null` for unconfigured sources). `app` is optional and defaults to this app's own id (`VTEX_APP_ID`) when omitted, so existing callers keep working unchanged; passing the `app` value a `listBucketPolicies` entry returned addresses that exact bucket instead of drifting onto a different app's composite key (see "Contract note" below).
   - **Given** an admin without the `file-manager-bucket-config` resource, **when** they call either query, **then** the `403 Forbidden` returned by file-manager is surfaced to the GraphQL caller as-is — `file-manager-graphql` performs no independent permission check of its own.
+
+> **Contract note (PR #34 review, mendescamara)**: file-manager's single-bucket policy routes require an explicit `{app}` segment (`/policies/{app}/{bucket}`, see file-manager's `BucketNamespaceHelper.ComposeBucketKey`) — there is no 2-segment `/policies/{bucket}` route. Because `listBucketPolicies` spans every app in the account/workspace (returning `BucketPolicyView.app` for disambiguation), the single-bucket operations must accept that same `app` to address the exact entry the list returned; hardcoding `app` to this app's own id would silently 404 or write an orphan entry under the wrong namespace for any bucket owned by another app (e.g. `builder-hub`'s `vtex-assets-builder`), including bypassing the protected-bucket immutability guard below, which also keys off the composite `{app}-{bucket}` string.
 
 #### US-3: Write and remove a bucket's admin policy via GraphQL
 
 - **Story**: As an account administrator using the Admin Panel, I want to set or remove a bucket's admin access policy, so that I can override its default or manifest-declared access levels.
 - **Acceptance Criteria**:
-  - **Given** an admin with the `file-manager-bucket-config` resource and an unprotected bucket, **when** they call `setBucketPolicy(bucket, readAccess, writeAccess)`, **then** the mutation proxies `POST /policies/{bucket}/admin` and returns the written `adminPolicy` with `updatedAt`/`updatedBy`.
-  - **Given** an admin with the `file-manager-bucket-config` resource and an unprotected bucket, **when** they call `deleteBucketPolicy(bucket)`, **then** the mutation proxies `DELETE /policies/{bucket}/admin` and returns confirmation (`bucket`, `removedAt`).
-  - **Given** one of the three protected buckets (`vtex-assets-builder`, `vtex.catalog-images-products`, `vtex.file-manager-graphql-logo`), **when** `setBucketPolicy` or `deleteBucketPolicy` is called for it, **then** the `403 Forbidden: "bucket policy is immutable"` returned by file-manager is surfaced to the caller unchanged.
+  - **Given** an admin with the `file-manager-bucket-config` resource and an unprotected bucket, **when** they call `setBucketPolicy(bucket, readAccess, writeAccess, app)`, **then** the mutation proxies `POST /policies/{app}/{bucket}/admin` and returns the written `adminPolicy` with `updatedAt`/`updatedBy`. `app` is optional, same default/override behavior as `getBucketPolicy`.
+  - **Given** an admin with the `file-manager-bucket-config` resource and an unprotected bucket, **when** they call `deleteBucketPolicy(bucket, app)`, **then** the mutation proxies `DELETE /policies/{app}/{bucket}/admin` and returns confirmation (`bucket`, `removedAt`). Same `app` default/override behavior.
+  - **Given** one of the three protected buckets (`vtex-assets-builder`, `vtex.catalog-images-products`, `vtex.file-manager-graphql-logo`), **when** `setBucketPolicy` or `deleteBucketPolicy` is called for it **with the `app` that owns it**, **then** the `403 Forbidden: "bucket policy is immutable"` returned by file-manager is surfaced to the caller unchanged.
   - **Given** an admin without the `file-manager-bucket-config` resource, **when** they call `setBucketPolicy` or `deleteBucketPolicy`, **then** the `403 Forbidden` from file-manager is surfaced as-is.
   - **Given** any of these mutations, **when** they are added to the schema, **then** `POST /policies/{bucket}/manifest` is **not** exposed through GraphQL at all — that route is exclusive to builder-hub's service-token flow, not the Admin Panel.
+  - Accepting an explicit `app` on these mutations does not widen the authorization surface: file-manager's `/policies/*/admin` routes already have no vendor-ownership guard, only the account-wide `file-manager-bucket-config` License Manager resource (confirmed in file-manager's `RoutesController.cs`/`BucketPolicyService.cs`) — any caller who reaches this proxy at all could already target any `{app}/{bucket}` pair once the `app` segment was fixed to 3 segments; this only makes that existing reach usable instead of self-limiting it to this app's own namespace.
 
 ### Key Scenarios
 
@@ -302,14 +305,14 @@ New `FileManager` client methods (`node/FileManager.ts`), alongside the existing
 listPolicies(marker?: string): Promise<{ policies: BucketPolicyView[]; nextMarker: string | null }>
   → GET /policies?marker={marker}
 
-getPolicy(bucket: string): Promise<BucketPolicyView | null>
-  → GET /policies/{bucket}
+getPolicy(bucket: string, app?: string): Promise<BucketPolicyView | null>
+  → GET /policies/{app ?? runningAppName}/{bucket}
 
-setAdminPolicy(bucket: string, readAccess: AccessLevel, writeAccess: AccessLevel): Promise<BucketPolicy>
-  → POST /policies/{bucket}/admin, body { readAccess, writeAccess }
+setAdminPolicy(bucket: string, readAccess: AccessLevel, writeAccess: AccessLevel, app?: string): Promise<BucketPolicy>
+  → POST /policies/{app ?? runningAppName}/{bucket}/admin, body { readAccess, writeAccess }
 
-deleteAdminPolicy(bucket: string): Promise<{ bucket: string; removedAt: string }>
-  → DELETE /policies/{bucket}/admin
+deleteAdminPolicy(bucket: string, app?: string): Promise<{ bucket: string; removedAt: string }>
+  → DELETE /policies/{app ?? runningAppName}/{bucket}/admin
 ```
 
 Updated constructor (`node/FileManager.ts`), replacing the current hardcoded `context.authToken` with the resolved end-user token (Decision 2, same precedence as `authFromCookie` in `node/directives/auth.ts`):
@@ -336,20 +339,19 @@ listBucketPolicies: async (_: unknown, __: unknown, ctx: ServiceContext) => {
   // paginate via nextMarker until exhausted, concatenating `policies`
 }
 
-getBucketPolicy: async (_: unknown, args: { bucket: string }, ctx: ServiceContext) => {
+getBucketPolicy: async (_: unknown, args: { bucket: string; app?: string }, ctx: ServiceContext) => {
   const fileManager = new FileManager(ctx.vtex)
-  return fileManager.getPolicy(args.bucket)
+  return fileManager.getPolicy(args.bucket, args.app)
 }
 
 setBucketPolicy: async (_: unknown, args: SetBucketPolicyArgs, ctx: ServiceContext) => {
   const fileManager = new FileManager(ctx.vtex)
-  return fileManager.setAdminPolicy(args.bucket, args.readAccess, args.writeAccess)
+  return fileManager.setAdminPolicy(args.bucket, args.readAccess, args.writeAccess, args.app)
 }
 
-deleteBucketPolicy: async (_: unknown, args: { bucket: string }, ctx: ServiceContext) => {
+deleteBucketPolicy: async (_: unknown, args: { bucket: string; app?: string }, ctx: ServiceContext) => {
   const fileManager = new FileManager(ctx.vtex)
-  await fileManager.deleteAdminPolicy(args.bucket)
-  return true
+  return fileManager.deleteAdminPolicy(args.bucket, args.app)
 }
 ```
 

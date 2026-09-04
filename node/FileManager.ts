@@ -30,12 +30,18 @@ const routes = {
     `${routes.Assets()}/${bucket}/${path}?width=${width}&height=${height}&aspect=${aspect}`,
   // The backend composes the canonical bucket key from {app}/{bucket} (see
   // BucketNamespaceHelper.ComposeBucketKey), so every single-bucket policy route must include
-  // this app's own id as the `:app` segment -- otherwise these 404 against
-  // /policies/:app/:bucket(/admin), unlike the app-agnostic /policies list route. The bucket
-  // name is user-supplied, so it's encoded to keep it a single path segment and avoid it being
-  // misinterpreted as extra route segments (e.g. "/" or "?" in the value).
-  Policy: (bucket: string) =>
-    `/policies/${runningAppName}/${encodeURIComponent(bucket)}`,
+  // an `:app` segment -- otherwise these 404 against /policies/:app/:bucket(/admin), unlike the
+  // app-agnostic /policies list route. `app` defaults to this app's own id (VTEX_APP_ID) so
+  // existing callers that only pass `bucket` keep operating on their own namespace, but callers
+  // that already have the `app` a listBucketPolicies entry belongs to (BucketPolicyView.app) can
+  // pass it explicitly to address that exact entry instead of silently drifting onto a different
+  // composite key (PR #34 review, mendescamara: getBucketPolicy/setBucketPolicy/deleteBucketPolicy
+  // ignored the returned `app` and always targeted runningAppName's own namespace, so acting on a
+  // bucket owned by another app either 404'd or created an orphan policy under this app's
+  // namespace instead of updating the one the caller saw in the list). Both segments are
+  // user-influenced, so both are encoded to keep them single path segments.
+  Policy: (bucket: string, app: string = runningAppName) =>
+    `/policies/${encodeURIComponent(app)}/${encodeURIComponent(bucket)}`,
 }
 
 export type GraphQLAccessLevel =
@@ -206,23 +212,24 @@ export default class FileManager extends ExternalClient {
     }
   }
 
-  public getPolicy = async (bucket: string): Promise<any> => {
-    const raw = await this.http.get(routes.Policy(bucket))
+  public getPolicy = async (bucket: string, app?: string): Promise<any> => {
+    const raw = await this.http.get(routes.Policy(bucket, app))
     return mapPolicyViewFromWire(raw)
   }
 
   public setAdminPolicy = async (
     bucket: string,
     readAccess: string,
-    writeAccess: string
+    writeAccess: string,
+    app?: string
   ): Promise<any> => {
-    const raw = await this.http.post(`${routes.Policy(bucket)}/admin`, {
+    const raw = await this.http.post(`${routes.Policy(bucket, app)}/admin`, {
       readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
       writeAccess: toWireAccessLevel(writeAccess as GraphQLAccessLevel),
     })
     return mapBucketPolicyFromWire(raw)
   }
 
-  public deleteAdminPolicy = async (bucket: string): Promise<any> =>
-    this.http.delete(`${routes.Policy(bucket)}/admin`)
+  public deleteAdminPolicy = async (bucket: string, app?: string): Promise<any> =>
+    this.http.delete(`${routes.Policy(bucket, app)}/admin`)
 }

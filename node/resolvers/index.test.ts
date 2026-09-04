@@ -89,7 +89,7 @@ describe('resolvers forward the resolved user token to FileManager for policy op
         undefined,
         expectedToken
       )
-      expect(getPolicyMock).toHaveBeenCalledWith('images')
+      expect(getPolicyMock).toHaveBeenCalledWith('images', undefined)
     }
   )
 
@@ -122,6 +122,65 @@ describe('resolvers forward the resolved user token to FileManager for policy op
     )
 
     expect(result).toEqual({ bucket: 'images', removedAt: 'now' })
+  })
+
+  // Regression coverage (PR #34 review, mendescamara): getBucketPolicy/setBucketPolicy/
+  // deleteBucketPolicy used to ignore the `app` a listBucketPolicies entry belongs to and always
+  // targeted this app's own namespace, so acting on another app's bucket either 404'd or silently
+  // wrote an orphan entry instead of the one the caller saw. These resolvers must forward `app`
+  // through to the FileManager client unchanged.
+  it.each([
+    [
+      'getBucketPolicy',
+      () =>
+        resolvers.Query.getBucketPolicy(
+          undefined,
+          { bucket: 'assets-builder', app: 'vtex.builder-hub' },
+          buildCtx({ cookie: 'cookie-token' })
+        ),
+      getPolicyMock,
+      ['assets-builder', 'vtex.builder-hub'],
+    ],
+    [
+      'deleteBucketPolicy',
+      () =>
+        resolvers.Mutation.deleteBucketPolicy(
+          undefined,
+          { bucket: 'assets-builder', app: 'vtex.builder-hub' },
+          buildCtx({ cookie: 'cookie-token' })
+        ),
+      deleteAdminPolicyMock,
+      ['assets-builder', 'vtex.builder-hub'],
+    ],
+  ] as const)(
+    '%s forwards the explicit app argument to FileManager',
+    async (_label, invoke, mock, expectedArgs) => {
+      await invoke()
+
+      expect(mock).toHaveBeenCalledWith(...expectedArgs)
+    }
+  )
+
+  it('setBucketPolicy forwards the explicit app argument to FileManager', async () => {
+    const ctx = buildCtx({ cookie: 'cookie-token' })
+
+    await resolvers.Mutation.setBucketPolicy(
+      undefined,
+      {
+        bucket: 'assets-builder',
+        readAccess: 'PUBLIC',
+        writeAccess: 'PUBLIC',
+        app: 'vtex.builder-hub',
+      },
+      ctx
+    )
+
+    expect(setAdminPolicyMock).toHaveBeenCalledWith(
+      'assets-builder',
+      'PUBLIC',
+      'PUBLIC',
+      'vtex.builder-hub'
+    )
   })
 
   it('logs a failure status and rethrows when the downstream call rejects', async () => {
