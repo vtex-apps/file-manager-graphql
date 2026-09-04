@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bucket Access Control Integration — Review Canvas</title>
+<style>
+:root {
+  --bg: #0d0f18;
+  --surface: #13161f;
+  --surface2: #1c2030;
+  --border: #252b3b;
+  --border2: #303650;
+  --text: #dde3f0;
+  --muted: #6b7694;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --blue: #60a5fa;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Progress bar ── */
+#reading-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--border); z-index: 100;
+}
+#reading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  width: 0%; transition: width .2s ease;
+}
+
+/* ── Sidebar nav ── */
+.sidenav {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 220px; background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 52px 0 32px;
+  display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.nav-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .08em;
+  color: var(--muted); text-transform: uppercase;
+  padding: 8px 20px 6px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-size: 13px; color: var(--muted);
+  border-left: 2px solid transparent;
+  transition: all .15s;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent2); border-left-color: var(--accent); background: rgba(99,102,241,.08); font-weight: 500; }
+.nav-item.visited .nav-dot { background: var(--green); }
+
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border2); flex-shrink: 0;
+  transition: background .3s;
+}
+
+.nav-progress {
+  margin-top: auto; padding: 20px 20px 0;
+  border-top: 1px solid var(--border);
+}
+.nav-prog-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.nav-prog-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.nav-prog-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.nav-prog-count { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+/* ── Main canvas ── */
+.canvas {
+  margin-left: 220px;
+  flex: 1;
+  padding: 48px 56px 100px;
+  max-width: 960px;
+}
+
+/* ── Panels ── */
+.panel {
+  margin-bottom: 72px;
+  scroll-margin-top: 32px;
+}
+
+.panel-eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent2);
+  margin-bottom: 10px;
+}
+
+.panel-title {
+  font-size: 26px; font-weight: 700; letter-spacing: -.4px;
+  margin-bottom: 6px;
+}
+
+.panel-sub {
+  font-size: 14px; color: var(--muted); line-height: 1.6;
+  margin-bottom: 28px;
+  max-width: 640px;
+}
+
+/* ── Overview ── */
+.overview-meta {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px;
+}
+.pill {
+  padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.pill-draft  { background: rgba(245,158,11,.12); color: var(--amber); border: 1px solid rgba(245,158,11,.25); }
+.pill-epic   { background: rgba(96,165,250,.1); color: var(--blue);  border: 1px solid rgba(96,165,250,.2); }
+.pill-scope  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+.tldr-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 28px;
+}
+.tldr-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px; }
+.tldr-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 14px; line-height: 1.5;
+}
+.tldr-item:last-child { border-bottom: none; }
+.tldr-bullet {
+  width: 20px; height: 20px; border-radius: 6px;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; margin-top: 1px;
+}
+.b-problem { background: rgba(239,68,68,.15); }
+.b-solution { background: rgba(99,102,241,.15); }
+.b-constraint { background: rgba(245,158,11,.12); }
+.b-scope { background: rgba(96,165,250,.1); }
+
+/* Flow chain */
+.chain-wrap { display: flex; align-items: stretch; gap: 0; margin-top: 4px; }
+.chain-node {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 14px;
+  position: relative;
+}
+.chain-num {
+  width: 22px; height: 22px; border-radius: 6px; background: var(--accent);
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 8px;
+}
+.chain-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.chain-detail { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.chain-arrow {
+  display: flex; align-items: center;
+  padding: 0 4px;
+  color: var(--border2); font-size: 16px;
+  flex-shrink: 0; align-self: center;
+}
+
+/* ── User Stories ── */
+.story-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+}
+.story-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.story-card:hover { border-color: var(--border2); background: var(--surface2); }
+.story-card.open { border-color: var(--accent); }
+.story-header { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.story-tag {
+  font-size: 11px; font-weight: 700; color: var(--accent2);
+  background: rgba(99,102,241,.12); border-radius: 5px;
+  padding: 2px 7px; flex-shrink: 0; margin-top: 1px;
+}
+.story-title { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.story-role { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.story-acs { display: none; margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.story-card.open .story-acs { display: block; }
+.story-ac {
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+  padding: 4px 0; display: flex; gap: 8px;
+}
+.story-ac::before { content: "→"; color: var(--accent); flex-shrink: 0; }
+.story-expand { font-size: 11px; color: var(--accent2); margin-top: 6px; }
+
+/* ── Architecture ── */
+.arch-section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin: 24px 0 12px; }
+
+.bucket-block {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px; margin-bottom: 12px;
+}
+.bucket-row { display: flex; align-items: center; gap: 12px; }
+.bucket-icon { font-size: 18px; }
+.bucket-name { font-size: 14px; font-weight: 600; }
+.bucket-path { font-size: 12px; color: var(--muted); font-family: 'SF Mono', monospace; }
+.bucket-badge { margin-left: auto; }
+
+.policy-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.policy-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); }
+.policy-table td { padding: 10px 12px; border-bottom: 1px solid rgba(37,43,59,.5); }
+.policy-table tr:last-child td { border-bottom: none; }
+.policy-table tr:hover td { background: rgba(255,255,255,.015); }
+
+.level-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 500;
+}
+.level-public    { background: rgba(34,197,94,.12);  color: var(--green); border: 1px solid rgba(34,197,94,.25); }
+.level-auth      { background: rgba(96,165,250,.1);  color: var(--blue);  border: 1px solid rgba(96,165,250,.2); }
+.level-admin     { background: rgba(245,158,11,.1);  color: var(--amber); border: 1px solid rgba(245,158,11,.2); }
+.level-immutable { background: rgba(239,68,68,.1);   color: var(--red);   border: 1px solid rgba(239,68,68,.2); }
+
+/* ── Decisions ── */
+.decisions-list { display: flex; flex-direction: column; gap: 10px; }
+.decision-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px;
+  cursor: pointer; transition: border-color .15s;
+}
+.decision-card:hover { border-color: var(--border2); }
+.decision-card.open { border-color: var(--accent); }
+.decision-header { display: flex; align-items: center; gap: 12px; }
+.decision-n {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  font-size: 12px; font-weight: 700; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+  color: var(--accent2);
+}
+.decision-title { font-size: 14px; font-weight: 600; flex: 1; }
+.decision-status {
+  font-size: 11px; padding: 2px 9px; border-radius: 99px; font-weight: 500;
+  background: rgba(34,197,94,.1); color: var(--green); border: 1px solid rgba(34,197,94,.2);
+  flex-shrink: 0;
+}
+.decision-chevron { color: var(--muted); font-size: 12px; transition: transform .2s; }
+.decision-card.open .decision-chevron { transform: rotate(180deg); }
+.decision-body {
+  display: none; margin-top: 14px; border-top: 1px solid var(--border);
+  padding-top: 14px; font-size: 13px; color: var(--muted); line-height: 1.6;
+}
+.decision-card.open .decision-body { display: block; }
+.decision-field { margin-bottom: 8px; }
+.decision-field strong { color: var(--text); font-weight: 500; }
+
+/* ── Risks ── */
+.risk-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+}
+.risk-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px;
+}
+.risk-badges { display: flex; gap: 6px; margin-bottom: 10px; }
+.risk-title { font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.risk-mitigation { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.badge-impact, .badge-likelihood {
+  font-size: 11px; font-weight: 600; padding: 2px 8px;
+  border-radius: 99px;
+}
+.high   { background: rgba(239,68,68,.12);  color: var(--red);   border: 1px solid rgba(239,68,68,.2); }
+.medium { background: rgba(245,158,11,.1);  color: var(--amber); border: 1px solid rgba(245,158,11,.2); }
+.low    { background: rgba(34,197,94,.1);   color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+
+/* ── API ── */
+.endpoint-list { display: flex; flex-direction: column; gap: 10px; }
+.endpoint {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.method {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 6px; flex-shrink: 0; margin-top: 1px;
+}
+.m-get    { background: rgba(34,197,94,.12); color: var(--green); }
+.m-post   { background: rgba(96,165,250,.1); color: var(--blue); }
+.m-delete { background: rgba(239,68,68,.1);  color: var(--red); }
+.endpoint-path {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13.5px; font-weight: 600; margin-bottom: 4px;
+}
+.endpoint-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.endpoint-codes { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.code-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px;
+  font-family: monospace;
+}
+.c200 { background: rgba(34,197,94,.1);  color: var(--green); }
+.c403 { background: rgba(239,68,68,.1);  color: var(--red); }
+.c401 { background: rgba(245,158,11,.1); color: var(--amber); }
+
+/* ── Gap ── */
+.gap-card {
+  background: rgba(245,158,11,.06);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 14px; padding: 24px 28px;
+  margin-bottom: 16px;
+}
+.gap-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 8px;
+}
+.gap-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.gap-body { font-size: 14px; color: #c9a044; line-height: 1.6; margin-bottom: 16px; }
+.gap-fix {
+  background: rgba(0,0,0,.3); border-radius: 8px;
+  padding: 14px 18px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px; color: #d4a853; line-height: 1.7;
+  white-space: pre-wrap;
+}
+.gap-card.resolved {
+  background: rgba(34,197,94,.06); border-color: rgba(34,197,94,.3);
+}
+.gap-card.resolved .gap-label { color: var(--green); }
+
+/* ── Divider ── */
+.section-divider { height: 1px; background: var(--border); margin: 0 0 72px; }
+</style>
+</head>
+<body>
+
+<div id="reading-bar"><div id="reading-fill"></div></div>
+
+<!-- Sidebar -->
+<nav class="sidenav">
+  <div class="nav-label">Seções</div>
+  <div class="nav-item active" data-target="overview">
+    <span class="nav-dot"></span>Visão Geral
+  </div>
+  <div class="nav-item" data-target="stories">
+    <span class="nav-dot"></span>User Stories
+  </div>
+  <div class="nav-item" data-target="architecture">
+    <span class="nav-dot"></span>Arquitetura
+  </div>
+  <div class="nav-item" data-target="decisions">
+    <span class="nav-dot"></span>Key Decisions
+  </div>
+  <div class="nav-item" data-target="risks">
+    <span class="nav-dot"></span>Riscos
+  </div>
+  <div class="nav-item" data-target="api">
+    <span class="nav-dot"></span>Superfície GraphQL
+  </div>
+  <div class="nav-item" data-target="gap">
+    <span class="nav-dot"></span>⚠ Gap encontrado
+  </div>
+
+  <div class="nav-progress">
+    <div class="nav-prog-label">Progresso de leitura</div>
+    <div class="nav-prog-bar"><div class="nav-prog-fill" id="nav-fill" style="width:0%"></div></div>
+    <div class="nav-prog-count" id="nav-count">0 / 7 seções</div>
+  </div>
+</nav>
+
+<!-- Canvas -->
+<main class="canvas">
+
+  <!-- 1. Visão Geral -->
+  <section class="panel" id="overview">
+    <div class="panel-eyebrow">Spec · Draft · STR-773</div>
+    <div class="panel-title">Bucket Access Control Integration</div>
+    <div class="panel-sub">Encaminhamento correto de token de usuário e superfície GraphQL de política de bucket no file-manager-graphql — cobrindo as Fases 4 e 9 da RFC.</div>
+
+    <div class="overview-meta">
+      <span class="pill pill-draft">● Draft</span>
+      <span class="pill pill-epic">STR-773</span>
+      <span class="pill pill-scope">Fases 4, 9</span>
+      <span class="pill pill-scope">3 User Stories</span>
+      <span class="pill pill-scope">4 Key Decisions</span>
+      <span class="pill pill-scope" style="color:var(--green);border-color:rgba(34,197,94,.25)">✓ revisado 2026-08-07</span>
+    </div>
+
+    <div class="tldr-card">
+      <div class="tldr-title">TL;DR</div>
+      <div class="tldr-item">
+        <div class="tldr-bullet b-problem">🔓</div>
+        <div><strong>Problema:</strong> o file-manager-graphql hoje encaminha context.authToken (token da própria app) em toda chamada ao file-manager — isso impede o file-manager de distinguir anônimo/autenticado/admin, e vai rejeitar em massa o tráfego via Admin Panel/store-form quando o enforcement for ativado.</div>
+      </div>
+      <div class="tldr-item">
+        <div class="tldr-bullet b-solution">🔧</div>
+        <div><strong>Solução:</strong> trocar a origem do header VtexIdclientAutCookie para context.userAuthToken (omitido quando ausente) em um único ponto do FileManager, e adicionar 4 novas operações GraphQL como proxy fino de /policies/* do file-manager, sem lógica de permissão própria.</div>
+      </div>
+      <div class="tldr-item">
+        <div class="tldr-bullet b-constraint">⚠</div>
+        <div><strong>Dependência bloqueante:</strong> a US-1 (token forwarding) é pré-requisito explícito do gate de ativação da US-4 do <code style="font-size:11px;opacity:.8">vtex.file-manager</code> — sem ela, todo tráfego proxied seria tratado como anônimo.</div>
+      </div>
+      <div class="tldr-item">
+        <div class="tldr-bullet b-scope">📦</div>
+        <div><strong>Fora de escopo:</strong> mudanças dentro do próprio file-manager, POST /policies/{bucket}/manifest (exclusiva do builder-hub), UI do Admin Panel (Fase 10), e ativação da US-4 em produção (decidida pelo time do file-manager).</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px">Fluxo de encaminhamento de token e proxy de política</div>
+    <div class="chain-wrap">
+      <div class="chain-node">
+        <div class="chain-num">1</div>
+        <div class="chain-name">Resolvers de arquivo</div>
+        <div class="chain-detail">getFile / uploadFile / deleteFile encaminham <code style="font-size:10px">userAuthToken</code> (ou omitem o header).</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node">
+        <div class="chain-num">2</div>
+        <div class="chain-name">FileManager (ExternalClient)</div>
+        <div class="chain-detail">Único ponto de construção do header — herdado por toda operação, incluindo as novas de política.</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node">
+        <div class="chain-num">3</div>
+        <div class="chain-name">vtex.file-manager</div>
+        <div class="chain-detail">Classifica anônimo/autenticado/admin corretamente; decide 403 para /policies/*.</div>
+      </div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-node">
+        <div class="chain-num">4</div>
+        <div class="chain-name">Resolvers de política</div>
+        <div class="chain-detail">403 do file-manager é repassado ao caller GraphQL sem alteração.</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 2. User Stories -->
+  <section class="panel" id="stories">
+    <div class="panel-eyebrow">Business Context</div>
+    <div class="panel-title">User Stories</div>
+    <div class="panel-sub">3 stories: correção do encaminhamento de token (bloqueante para o file-manager) e a superfície GraphQL de leitura/escrita de política de bucket.</div>
+
+    <div class="story-grid">
+
+      <div class="story-card" onclick="toggleStory(this)">
+        <div class="story-header">
+          <div class="story-tag">US-1</div>
+          <div class="story-title">Encaminhar o token real do usuário em toda operação de arquivo</div>
+        </div>
+        <div class="story-role">Como enforcement do file-manager <span style="font-size:11px;color:var(--amber)"> · Bloqueante</span></div>
+        <div class="story-expand">Ver critérios de aceite ↓</div>
+        <div class="story-acs">
+          <div class="story-ac"><code style="font-size:11px">VtexIdclientAutCookie</code> passa a carregar <code style="font-size:11px">context.userAuthToken</code>, não <code style="font-size:11px">context.authToken</code>, em getFile/getFileUrl/uploadFile/deleteFile.</div>
+          <div class="story-ac">Sem token de usuário, o header é omitido — nunca enviado vazio.</div>
+          <div class="story-ac">Isenção da allow list para uploadFile permanece inalterada.</div>
+          <div class="story-ac">Mudança única no constructor de FileManager, compartilhada por toda operação de arquivo.</div>
+        </div>
+      </div>
+
+      <div class="story-card" onclick="toggleStory(this)">
+        <div class="story-header">
+          <div class="story-tag">US-2</div>
+          <div class="story-title">Ler políticas de bucket via GraphQL</div>
+        </div>
+        <div class="story-role">Como administrador de conta</div>
+        <div class="story-expand">Ver critérios de aceite ↓</div>
+        <div class="story-acs">
+          <div class="story-ac"><code style="font-size:11px">listBucketPolicies</code> faz proxy de GET /policies, paginando o nextMarker internamente — o caller recebe uma lista única e completa.</div>
+          <div class="story-ac"><code style="font-size:11px">getBucketPolicy(bucket)</code> faz proxy de GET /policies/{bucket}.</div>
+          <div class="story-ac">403 sem o resource file-manager-bucket-config é exposto como está — sem checagem própria nesta app.</div>
+        </div>
+      </div>
+
+      <div class="story-card" onclick="toggleStory(this)">
+        <div class="story-header">
+          <div class="story-tag">US-3</div>
+          <div class="story-title">Escrever e remover a política admin de um bucket via GraphQL</div>
+        </div>
+        <div class="story-role">Como administrador de conta</div>
+        <div class="story-expand">Ver critérios de aceite ↓</div>
+        <div class="story-acs">
+          <div class="story-ac"><code style="font-size:11px">setBucketPolicy</code>/<code style="font-size:11px">deleteBucketPolicy</code> fazem proxy de POST/DELETE /policies/{bucket}/admin.</div>
+          <div class="story-ac">Buckets protegidos retornam o 403 "bucket policy is immutable" do file-manager sem alteração.</div>
+          <div class="story-ac">POST /policies/{bucket}/manifest nunca é exposta via GraphQL — exclusiva do builder-hub.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 3. Arquitetura -->
+  <section class="panel" id="architecture">
+    <div class="panel-eyebrow">Arch Decisions</div>
+    <div class="panel-title">Arquitetura</div>
+    <div class="panel-sub">Duas mudanças aditivas ao ExternalClient FileManager já existente — nenhum client novo, nenhuma camada de autorização própria adicional.</div>
+
+    <div class="arch-section-title">Decisões de escopo</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table class="policy-table">
+        <thead>
+          <tr><th>Aspecto</th><th>Decisão</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Header ausente</td>
+            <td>Omitido, nunca enviado vazio <span style="font-size:11px;color:var(--muted)">(D1)</span></td>
+          </tr>
+          <tr>
+            <td>Onde vivem os métodos /policies/*</td>
+            <td>No FileManager existente, não um client novo <span style="font-size:11px;color:var(--muted)">(D2)</span></td>
+          </tr>
+          <tr>
+            <td>Erros do downstream (incl. 403)</td>
+            <td>Relançados como estão — sem wrapper genérico <span style="font-size:11px;color:var(--muted)">(D3)</span></td>
+          </tr>
+          <tr>
+            <td>Autorização extra (Sphinx)</td>
+            <td>Não adicionada — LicenseManager do file-manager já decide <span style="font-size:11px;color:var(--muted)">(D4)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 4. Key Decisions -->
+  <section class="panel" id="decisions">
+    <div class="panel-eyebrow">Arch Decisions</div>
+    <div class="panel-title">Key Decisions</div>
+    <div class="panel-sub">4 decisões arquiteturais documentadas — todas aceitas, sem pendência de validação externa.</div>
+
+    <div class="decisions-list">
+
+      <div class="decision-card" onclick="toggleDecision(this)">
+        <div class="decision-header">
+          <div class="decision-n">1</div>
+          <div class="decision-title">Omitir o header em vez de enviar token vazio/undefined</div>
+          <div class="decision-status">Accepted</div>
+          <div class="decision-chevron">▾</div>
+        </div>
+        <div class="decision-body">
+          <div class="decision-field"><strong>Decisão:</strong> O constructor do FileManager só inclui VtexIdclientAutCookie quando context.userAuthToken é truthy; ausente, a chave do header é omitida, não enviada vazia.</div>
+          <div class="decision-field"><strong>Consequência:</strong> Alinha-se exatamente com a detecção de anônimo do file-manager — evita ambiguidade entre "header presente mas vazio" e "header ausente".</div>
+        </div>
+      </div>
+
+      <div class="decision-card" onclick="toggleDecision(this)">
+        <div class="decision-header">
+          <div class="decision-n">2</div>
+          <div class="decision-title">Métodos /policies/* vivem no FileManager existente</div>
+          <div class="decision-status">Accepted</div>
+          <div class="decision-chevron">▾</div>
+        </div>
+        <div class="decision-body">
+          <div class="decision-field"><strong>Decisão:</strong> listPolicies, getPolicy, setAdminPolicy, deleteAdminPolicy são novos métodos públicos no FileManager já existente, reaproveitando constructor e header.</div>
+          <div class="decision-field"><strong>Consequência:</strong> Mantém uma única fonte de verdade de comunicação com o file-manager; herdam automaticamente o comportamento corrigido de token da D1.</div>
+        </div>
+      </div>
+
+      <div class="decision-card" onclick="toggleDecision(this)">
+        <div class="decision-header">
+          <div class="decision-n">3</div>
+          <div class="decision-title">Erros do downstream (incl. 403) são relançados como estão</div>
+          <div class="decision-status">Accepted</div>
+          <div class="decision-chevron">▾</div>
+        </div>
+        <div class="decision-body">
+          <div class="decision-field"><strong>Decisão:</strong> /policies/* segue o padrão de getFile/deleteFile (relançar como está), não o de saveFile (InternalServerError genérico).</div>
+          <div class="decision-field"><strong>Consequência:</strong> Admin Panel recebe o motivo exato da rejeição (ex.: "bucket policy is immutable"), em vez de uma falha genérica.</div>
+        </div>
+      </div>
+
+      <div class="decision-card" onclick="toggleDecision(this)">
+        <div class="decision-header">
+          <div class="decision-n">4</div>
+          <div class="decision-title">Sem camada nova de Sphinx/@requiresAuth além do login</div>
+          <div class="decision-status">Accepted</div>
+          <div class="decision-chevron">▾</div>
+        </div>
+        <div class="decision-body">
+          <div class="decision-field"><strong>Decisão:</strong> @requiresAuth continua exigindo login, mas a decisão de account-administrator é inteiramente do LicenseManager do file-manager — sem checagem Sphinx duplicada.</div>
+          <div class="decision-field"><strong>Consequência:</strong> Evita duas fontes de autorização potencialmente inconsistentes.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 5. Riscos -->
+  <section class="panel" id="risks">
+    <div class="panel-eyebrow">Arch Decisions</div>
+    <div class="panel-title">Riscos</div>
+    <div class="panel-sub">3 riscos mapeados. Nenhum bloqueia o deploy independente desta spec.</div>
+
+    <div class="risk-grid">
+
+      <div class="risk-card">
+        <div class="risk-badges">
+          <span class="badge-impact low">Nenhum impacto</span>
+          <span class="badge-likelihood high">Alta prob.</span>
+        </div>
+        <div class="risk-title">US-1 é lançada antes da ativação da US-4 do file-manager</div>
+        <div class="risk-mitigation"><strong>Mitigação:</strong> Seguro deployar de forma independente — sem efeito comportamental até a ativação.</div>
+      </div>
+
+      <div class="risk-card">
+        <div class="risk-badges">
+          <span class="badge-impact medium">Médio impacto</span>
+          <span class="badge-likelihood low">Baixa prob.</span>
+        </div>
+        <div class="risk-title">Algum caller dependia implicitamente do token de app dar acesso elevado</div>
+        <div class="risk-mitigation"><strong>Mitigação:</strong> Coberto pelo risco de ativação do próprio file-manager; esta spec só corrige o tipo de token enviado.</div>
+      </div>
+
+      <div class="risk-card">
+        <div class="risk-badges">
+          <span class="badge-impact low">Baixo impacto</span>
+          <span class="badge-likelihood medium">Média prob.</span>
+        </div>
+        <div class="risk-title">Resolvers /policies/* ficam fora de sincronia com o schema do file-manager</div>
+        <div class="risk-mitigation"><strong>Mitigação:</strong> Pin de versão vtex.file-manager: 0.x já existente; mudanças passam por revisão própria.</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 6. Superfície GraphQL -->
+  <section class="panel" id="api">
+    <div class="panel-eyebrow">Technical Contract</div>
+    <div class="panel-title">Superfície GraphQL</div>
+    <div class="panel-sub">4 novas operações, todas com @requiresAuth. Autorização de nível admin decidida inteiramente pelo file-manager (LicenseManager) — sem lógica própria nesta app.</div>
+
+    <div class="endpoint-list">
+
+      <div class="endpoint">
+        <div class="method m-get">QUERY</div>
+        <div>
+          <div class="endpoint-path">listBucketPolicies</div>
+          <div class="endpoint-desc">Proxy paginado de <code style="font-size:11px">GET /policies</code> — retorna todo bucket configurado na conta do caller, com effectivePolicy, manifestPolicy e adminPolicy.</div>
+          <div class="endpoint-codes">
+            <span class="code-badge c200">lista completa</span>
+            <span class="code-badge c403">403 sem file-manager-bucket-config</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="method m-get">QUERY</div>
+        <div>
+          <div class="endpoint-path">getBucketPolicy(bucket)</div>
+          <div class="endpoint-desc">Proxy de <code style="font-size:11px">GET /policies/{bucket}</code> — null para fontes não configuradas.</div>
+          <div class="endpoint-codes">
+            <span class="code-badge c200">200</span>
+            <span class="code-badge c403">403 sem permissão</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="method m-post">MUTATION</div>
+        <div>
+          <div class="endpoint-path">setBucketPolicy(bucket, readAccess, writeAccess)</div>
+          <div class="endpoint-desc">Proxy de <code style="font-size:11px">POST /policies/{bucket}/admin</code>.</div>
+          <div class="endpoint-codes">
+            <span class="code-badge c200">política gravada</span>
+            <span class="code-badge c403">403 bucket imutável</span>
+            <span class="code-badge c403">403 sem permissão</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="endpoint">
+        <div class="method m-delete">MUTATION</div>
+        <div>
+          <div class="endpoint-path">deleteBucketPolicy(bucket)</div>
+          <div class="endpoint-desc">Proxy de <code style="font-size:11px">DELETE /policies/{bucket}/admin</code>.</div>
+          <div class="endpoint-codes">
+            <span class="code-badge c200">confirmação</span>
+            <span class="code-badge c403">403 bucket imutável</span>
+            <span class="code-badge c403">403 sem permissão</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="section-divider"></div>
+
+  <!-- 7. Gap -->
+  <section class="panel" id="gap">
+    <div class="panel-eyebrow">Resultado do review</div>
+    <div class="panel-title">Conformidade</div>
+    <div class="panel-sub">17/18 itens conformes com o template specification + sdlc-golden-path. Todas as 17 seções do template SDD estão presentes e preenchidas. 1 gap obrigatório do golden path permanece.</div>
+
+    <div class="gap-card">
+      <div class="gap-label">⚠ Ação requerida · sdlc-golden-path · NFR gate</div>
+      <div class="gap-title">NFR Observability ausente</div>
+      <div class="gap-body">
+        A feature adiciona 4 novas operações GraphQL e um novo padrão de encaminhamento de credencial — o <code style="font-size:12px;background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px">sdlc-golden-path</code> exige ao menos um NFR referenciando o O11y golden path, ou um waiver explícito com justificativa. A seção Non-Functional Requirements atual cobre apenas política de rede (sem novo outbound-access) e reuso de infraestrutura — sem menção a logging, tracing ou métricas de erro para as novas operações /policies/*.
+      </div>
+      <div class="gap-fix">Adicionar à seção NFR:
+
+NFR-O11y: Logging estruturado (sem PII) em toda operação
+/policies/*, incluindo bucket e resultado (200/403); nenhuma
+tracing span nova é necessária além da já emitida pelo
+ExternalClient subjacente.
+
+— ou, se realmente não se aplicar —
+
+NFR-O11y: N/A — [justificativa aqui]</div>
+    </div>
+
+  </section>
+
+</main>
+
+<script>
+const sections = ['overview','stories','architecture','decisions','risks','api','gap'];
+const visited = new Set();
+
+// Scroll progress bar
+window.addEventListener('scroll', () => {
+  const doc = document.documentElement;
+  const scrolled = doc.scrollTop / (doc.scrollHeight - doc.clientHeight);
+  document.getElementById('reading-fill').style.width = (scrolled * 100) + '%';
+});
+
+// IntersectionObserver for nav state
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      visited.add(id);
+      updateNav(id);
+    }
+  });
+}, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+
+function updateNav(activeId) {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    const t = item.dataset.target;
+    item.classList.toggle('active', t === activeId);
+    if (visited.has(t)) item.classList.add('visited');
+  });
+
+  const count = visited.size;
+  const pct = (count / sections.length * 100).toFixed(0);
+  document.getElementById('nav-fill').style.width = pct + '%';
+  document.getElementById('nav-count').textContent = `${count} / ${sections.length} seções`;
+}
+
+// Nav click smooth scroll
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const el = document.getElementById(item.dataset.target);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+// Story cards
+function toggleStory(card) {
+  card.classList.toggle('open');
+  const expand = card.querySelector('.story-expand');
+  if (expand) expand.textContent = card.classList.contains('open') ? 'Fechar ↑' : 'Ver critérios de aceite ↓';
+}
+
+// Decision cards
+function toggleDecision(card) {
+  card.classList.toggle('open');
+}
+</script>
+</body>
+</html>
