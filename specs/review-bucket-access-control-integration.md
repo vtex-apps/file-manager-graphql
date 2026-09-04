@@ -116,11 +116,11 @@ nenhuma camada de autorização própria adicional.
 </details>
 
 <details>
-<summary><b>D4</b> · <code>Accepted</code> — Sem camada nova de Sphinx/<code>@requiresAuth</code> além do login</summary>
+<summary><b>D4</b> · <code>Accepted</code> — Sphinx <code>isAdmin</code> como filtro de população; License Manager continua o oracle de permissão</summary>
 
-**Decisão:** `@requiresAuth` continua exigindo login, mas a decisão de account-administrator é inteiramente do LicenseManager do file-manager — sem checagem Sphinx duplicada.
+**Decisão:** `@requiresAuth` exige login. Sphinx `isAdmin` corta store vs Admin (igual `deleteFile`). A decisão de *qual* admin gerencia policy continua sendo o License Manager do file-manager — Admin sem o resource ainda vê o 403 original.
 
-**Consequência:** Evita duas fontes de autorização potencialmente inconsistentes.
+**Consequência:** Store não chega em `/policies/*`. Sphinx não substitui o resource; LM roles são Admin-only.
 
 </details>
 
