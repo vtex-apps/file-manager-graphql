@@ -17,8 +17,8 @@ type DeleteBucketPolicyResult {
 }
 
 type BucketPolicyView {
-  """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps."""
-  app: String!
+  """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps. Nullable (Bugbot follow-up): file-manager derives this from the stored admin/manifest policy document's own App field (BuildViewAsync), which can be absent for an indexed bucket whose only policy source is a hardcoded fallback, or transiently during the index/document race documented in DeindexBucketKeyIfUnusedAsync -- declaring this non-null would fail the entire listBucketPolicies query for one such entry instead of returning it with app: null."""
+  app: String
   bucket: String!
   effectivePolicy: BucketPolicy!
   manifestPolicy: BucketPolicy

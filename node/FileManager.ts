@@ -40,8 +40,16 @@ const routes = {
   // bucket owned by another app either 404'd or created an orphan policy under this app's
   // namespace instead of updating the one the caller saw in the list). Both segments are
   // user-influenced, so both are encoded to keep them single path segments.
-  Policy: (bucket: string, app: string = runningAppName) =>
-    `/policies/${encodeURIComponent(app)}/${encodeURIComponent(bucket)}`,
+  //
+  // Fix (Bugbot follow-up on this same commit): `app: string = runningAppName` as a default
+  // *parameter* only substitutes for `undefined`, but GraphQL's optional `app: String` argument
+  // arrives as `null` (not `undefined`) when a client explicitly sends `app: null` -- the default
+  // never kicks in, `app` stays `null`, and `encodeURIComponent(null)` produces the literal path
+  // segment "null", silently targeting a bogus `/policies/null/{bucket}` route instead of falling
+  // back to this app's own namespace. `??` (nullish coalescing) covers both `undefined` and
+  // `null`, unlike a default parameter.
+  Policy: (bucket: string, app?: string | null) =>
+    `/policies/${encodeURIComponent(app ?? runningAppName)}/${encodeURIComponent(bucket)}`,
 }
 
 export type GraphQLAccessLevel =
@@ -212,7 +220,7 @@ export default class FileManager extends ExternalClient {
     }
   }
 
-  public getPolicy = async (bucket: string, app?: string): Promise<any> => {
+  public getPolicy = async (bucket: string, app?: string | null): Promise<any> => {
     const raw = await this.http.get(routes.Policy(bucket, app))
     return mapPolicyViewFromWire(raw)
   }
@@ -221,7 +229,7 @@ export default class FileManager extends ExternalClient {
     bucket: string,
     readAccess: string,
     writeAccess: string,
-    app?: string
+    app?: string | null
   ): Promise<any> => {
     const raw = await this.http.post(`${routes.Policy(bucket, app)}/admin`, {
       readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
@@ -230,6 +238,6 @@ export default class FileManager extends ExternalClient {
     return mapBucketPolicyFromWire(raw)
   }
 
-  public deleteAdminPolicy = async (bucket: string, app?: string): Promise<any> =>
+  public deleteAdminPolicy = async (bucket: string, app?: string | null): Promise<any> =>
     this.http.delete(`${routes.Policy(bucket, app)}/admin`)
 }

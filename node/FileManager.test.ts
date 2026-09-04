@@ -457,6 +457,39 @@ describe('FileManager single-bucket policy routes include the running app id', (
     )
   })
 
+  // Regression coverage (Bugbot follow-up): `app: string = runningAppName` as a default
+  // *parameter* only substitutes for `undefined`. GraphQL's optional `app: String` argument
+  // arrives as `null` (not `undefined`) when a client explicitly sends `app: null`, which used to
+  // skip the default entirely and produce the literal route "/policies/null/{bucket}" instead of
+  // falling back to runningAppName.
+  it('falls back to runningAppName when app is explicitly null, not just when omitted', async () => {
+    const { fileManager, http } = await loadClientWithAppId(
+      'vtex.file-manager-graphql@0.8.0'
+    )
+
+    http.get.mockResolvedValue({ bucket: 'images' })
+    await fileManager.getPolicy('images', null)
+
+    expect(http.get).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/images'
+    )
+
+    http.post.mockResolvedValue({ readAccess: 'public', writeAccess: 'public' })
+    await fileManager.setAdminPolicy('images', 'PUBLIC', 'PUBLIC', null)
+
+    expect(http.post).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/images/admin',
+      expect.any(Object)
+    )
+
+    http.delete.mockResolvedValue(undefined)
+    await fileManager.deleteAdminPolicy('images', null)
+
+    expect(http.delete).toHaveBeenCalledWith(
+      '/policies/vtex.file-manager-graphql/images/admin'
+    )
+  })
+
   it('encodes an explicit app argument so it cannot introduce extra path segments', async () => {
     const { fileManager, http } = await loadClientWithAppId(
       'vtex.file-manager-graphql@0.8.0'

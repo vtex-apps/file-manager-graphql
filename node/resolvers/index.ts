@@ -26,19 +26,19 @@ type UploadFileArgs = {
 
 type GetBucketPolicyArgs = {
   bucket: string
-  app?: string
+  app?: string | null
 }
 
 type SetBucketPolicyArgs = {
   bucket: string
   readAccess: string
   writeAccess: string
-  app?: string
+  app?: string | null
 }
 
 type DeleteBucketPolicyArgs = {
   bucket: string
-  app?: string
+  app?: string | null
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
