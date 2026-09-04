@@ -14,11 +14,11 @@ describe('logPolicyOperation', () => {
     errorSpy.mockRestore()
   })
 
-  it('logs successful operations via console.log with bucket, operation and status', () => {
+  it('logs successful operations via console.log with bucket, operation and HTTP 200', () => {
     logPolicyOperation({
       operation: 'getBucketPolicy',
       bucket: 'images',
-      status: 'success',
+      status: 200,
       account: 'myaccount',
       workspace: 'master',
     })
@@ -30,7 +30,7 @@ describe('logPolicyOperation', () => {
       type: 'bucket-policy-operation',
       operation: 'getBucketPolicy',
       bucket: 'images',
-      status: 'success',
+      status: 200,
       account: 'myaccount',
       workspace: 'master',
     })
@@ -57,7 +57,7 @@ describe('logPolicyOperation', () => {
     logPolicyOperation({
       operation: 'getBucketPolicy',
       bucket: 'images',
-      status: 'success',
+      status: 200,
     })
 
     const logged = JSON.parse(logSpy.mock.calls[0][0])
@@ -78,7 +78,7 @@ describe('withPolicyLogging', () => {
     jest.restoreAllMocks()
   })
 
-  it('resolves with the operation result and logs a success status', async () => {
+  it('resolves with the operation result and logs HTTP 200', async () => {
     const result = await withPolicyLogging(
       { operation: 'getBucketPolicy', bucket: 'images' },
       async () => ({ bucket: 'images' })
@@ -86,11 +86,11 @@ describe('withPolicyLogging', () => {
 
     expect(result).toEqual({ bucket: 'images' })
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('"status":"success"')
+      expect.stringContaining('"status":200')
     )
   })
 
-  it('rethrows the original error and logs the downstream status extracted from it', async () => {
+  it('rethrows the original error and logs response.status', async () => {
     const err = { response: { status: 403 } }
 
     await expect(
@@ -105,5 +105,40 @@ describe('withPolicyLogging', () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('"status":403')
     )
+  })
+
+  it('logs err.statusCode when the VTEX IO client shape has no response.status', async () => {
+    const err = { statusCode: 403 }
+
+    await expect(
+      withPolicyLogging(
+        { operation: 'setBucketPolicy', bucket: 'images' },
+        async () => {
+          throw err
+        }
+      )
+    ).rejects.toBe(err)
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining('"status":403')
+    )
+  })
+
+  it('omits status and uses console.error when the error has no HTTP status', async () => {
+    const err = new Error('unrecognized wire access level')
+
+    await expect(
+      withPolicyLogging(
+        { operation: 'getBucketPolicy', bucket: 'images' },
+        async () => {
+          throw err
+        }
+      )
+    ).rejects.toBe(err)
+
+    expect(console.error).toHaveBeenCalledTimes(1)
+    const logged = JSON.parse((console.error as jest.Mock).mock.calls[0][0])
+    expect(logged).not.toHaveProperty('status')
+    expect(logged.operation).toBe('getBucketPolicy')
   })
 })
