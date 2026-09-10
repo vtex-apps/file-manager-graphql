@@ -593,13 +593,13 @@ body {
       <div class="decision-card" onclick="toggleDecision(this)">
         <div class="decision-header">
           <div class="decision-n">4</div>
-          <div class="decision-title">Sem camada nova de Sphinx/@requiresAuth além do login</div>
+          <div class="decision-title">Sphinx isAdmin como filtro de população; License Manager continua o oracle de permissão</div>
           <div class="decision-status">Accepted</div>
           <div class="decision-chevron">▾</div>
         </div>
         <div class="decision-body">
-          <div class="decision-field"><strong>Decisão:</strong> @requiresAuth continua exigindo login, mas a decisão de account-administrator é inteiramente do LicenseManager do file-manager — sem checagem Sphinx duplicada.</div>
-          <div class="decision-field"><strong>Consequência:</strong> Evita duas fontes de autorização potencialmente inconsistentes.</div>
+          <div class="decision-field"><strong>Decisão:</strong> @requiresAuth exige login. Sphinx isAdmin corta store vs Admin (igual deleteFile). A decisão de qual admin gerencia policy continua sendo o License Manager do file-manager — Admin sem o resource ainda vê o 403 original.</div>
+          <div class="decision-field"><strong>Consequência:</strong> Store não chega em /policies/*. Sphinx não substitui o resource; LM roles são Admin-only.</div>
         </div>
       </div>
 

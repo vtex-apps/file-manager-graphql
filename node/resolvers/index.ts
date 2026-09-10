@@ -4,8 +4,11 @@ import createDOMPurify from 'dompurify'
 // eslint-disable-next-line prettier/prettier 
 import type { ServiceContext } from '@vtex/api'
 
-import FileManager from '../FileManager'
 import { Readable } from 'stream'
+
+import { resolveUserToken } from '../directives/auth'
+import FileManager from '../FileManager'
+import { withPolicyLogging } from '../utils/policyLogger'
 
 
 type FileManagerArgs = {
@@ -19,6 +22,23 @@ type FileManagerArgs = {
 type UploadFileArgs = {
   file: Promise<any>
   bucket: string
+}
+
+type GetBucketPolicyArgs = {
+  bucket: string
+  app?: string | null
+}
+
+type SetBucketPolicyArgs = {
+  bucket: string
+  readAccess: string
+  writeAccess: string
+  app?: string | null
+}
+
+type DeleteBucketPolicyArgs = {
+  bucket: string
+  app?: string | null
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
@@ -75,7 +95,7 @@ const sanitizeSvgFile = async (loadedFile: any) => {
 export const resolvers = {
   Query: {
     getFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex)
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { path, width, height, aspect, bucket } = args
 
       const file = await fileManager.getFile({path, width, height, aspect, bucket})
@@ -83,7 +103,7 @@ export const resolvers = {
       return file
     },
     getFileUrl: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex)
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { path, bucket } = args
 
       const file = await fileManager.getFileUrl(path, bucket)
@@ -93,10 +113,48 @@ export const resolvers = {
     settings: async () => ({
       maxFileSizeMB: 4,
     }),
+    listBucketPolicies: async (_: unknown, __: unknown, ctx: ServiceContext) => {
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+
+      return withPolicyLogging(
+        {
+          operation: 'listBucketPolicies',
+          bucket: null,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        async () => {
+          const allPolicies: any[] = []
+          let marker: string | undefined
+
+          do {
+            const page = await fileManager.listPolicies(marker)
+            allPolicies.push(...page.policies)
+            marker = page.nextMarker ?? undefined
+          } while (marker)
+
+          return allPolicies
+        }
+      )
+    },
+    getBucketPolicy: async (_: unknown, args: GetBucketPolicyArgs, ctx: ServiceContext) => {
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const { bucket, app } = args
+
+      return withPolicyLogging(
+        {
+          operation: 'getBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.getPolicy(bucket, app)
+      )
+    },
   },
   Mutation: {
     uploadFile: async (_: unknown, args: UploadFileArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex)
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { file, bucket } = args
       let loadedFile = await file
       const {filename: name, mimetype, encoding } = loadedFile
@@ -134,12 +192,40 @@ export const resolvers = {
       }
     },
     deleteFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex)
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
       const { path, bucket } = args
 
       await fileManager.deleteFile(path, bucket)
 
       return true
+    },
+    setBucketPolicy: async (_: unknown, args: SetBucketPolicyArgs, ctx: ServiceContext) => {
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const { bucket, readAccess, writeAccess, app } = args
+
+      return withPolicyLogging(
+        {
+          operation: 'setBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.setAdminPolicy(bucket, readAccess, writeAccess, app)
+      )
+    },
+    deleteBucketPolicy: async (_: unknown, args: DeleteBucketPolicyArgs, ctx: ServiceContext) => {
+      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const { bucket, app } = args
+
+      return withPolicyLogging(
+        {
+          operation: 'deleteBucketPolicy',
+          bucket,
+          account: ctx.vtex.account,
+          workspace: ctx.vtex.workspace,
+        },
+        () => fileManager.deleteAdminPolicy(bucket, app)
+      )
     },
   },
 }

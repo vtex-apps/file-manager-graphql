@@ -28,11 +28,96 @@ const routes = {
     bucket: string
   ) =>
     `${routes.Assets()}/${bucket}/${path}?width=${width}&height=${height}&aspect=${aspect}`,
+  // The backend composes the canonical bucket key from {app}/{bucket} (see
+  // BucketNamespaceHelper.ComposeBucketKey), so every single-bucket policy route must include
+  // an `:app` segment -- otherwise these 404 against /policies/:app/:bucket(/admin), unlike the
+  // app-agnostic /policies list route. `app` defaults to this app's own id (VTEX_APP_ID) so
+  // existing callers that only pass `bucket` keep operating on their own namespace, but callers
+  // that already have the `app` a listBucketPolicies entry belongs to (BucketPolicyView.app) can
+  // pass it explicitly to address that exact entry instead of silently drifting onto a different
+  // composite key (PR #34 review, mendescamara: getBucketPolicy/setBucketPolicy/deleteBucketPolicy
+  // ignored the returned `app` and always targeted runningAppName's own namespace, so acting on a
+  // bucket owned by another app either 404'd or created an orphan policy under this app's
+  // namespace instead of updating the one the caller saw in the list). Both segments are
+  // user-influenced, so both are encoded to keep them single path segments.
+  //
+  // Fix (Bugbot follow-up on this same commit): `app: string = runningAppName` as a default
+  // *parameter* only substitutes for `undefined`, but GraphQL's optional `app: String` argument
+  // arrives as `null` (not `undefined`) when a client explicitly sends `app: null` -- the default
+  // never kicks in, `app` stays `null`, and `encodeURIComponent(null)` produces the literal path
+  // segment "null", silently targeting a bogus `/policies/null/{bucket}` route instead of falling
+  // back to this app's own namespace. `??` (nullish coalescing) covers both `undefined` and
+  // `null`, unlike a default parameter.
+  Policy: (bucket: string, app?: string | null) =>
+    `/policies/${encodeURIComponent(app ?? runningAppName)}/${encodeURIComponent(bucket)}`,
+}
+
+export type GraphQLAccessLevel =
+  | 'PUBLIC'
+  | 'AUTHENTICATED'
+  | 'ACCOUNT_ADMINISTRATOR'
+
+export const toWireAccessLevel = (level: GraphQLAccessLevel): string => {
+  switch (level) {
+    case 'PUBLIC':
+      return 'public'
+    case 'AUTHENTICATED':
+      return 'authenticated'
+    case 'ACCOUNT_ADMINISTRATOR':
+      return 'account-administrator'
+    default:
+      return level
+  }
+}
+
+// Fail closed on unrecognized/missing wire values (PR #34 review, mendescamara): silently
+// mapping an unknown value to PUBLIC would mask a contract error/mismatch as a potentially
+// insecure representation. Throwing surfaces it loudly instead of ever guessing.
+export const fromWireAccessLevel = (level: string): GraphQLAccessLevel => {
+  switch (level) {
+    case 'public':
+      return 'PUBLIC'
+    case 'authenticated':
+      return 'AUTHENTICATED'
+    case 'account-administrator':
+      return 'ACCOUNT_ADMINISTRATOR'
+    default:
+      throw new Error(`Unrecognized wire access level: ${level}`)
+  }
+}
+
+const mapBucketPolicyFromWire = (policy: any): any => {
+  if (!policy) {
+    return policy
+  }
+
+  return {
+    ...policy,
+    readAccess: fromWireAccessLevel(policy.readAccess),
+    writeAccess: fromWireAccessLevel(policy.writeAccess),
+  }
+}
+
+export const mapPolicyViewFromWire = (raw: any): any => {
+  if (!raw) {
+    return raw
+  }
+
+  return {
+    ...raw,
+    effectivePolicy: mapBucketPolicyFromWire(raw.effectivePolicy),
+    manifestPolicy: raw.manifestPolicy
+      ? mapBucketPolicyFromWire(raw.manifestPolicy)
+      : null,
+    adminPolicy: raw.adminPolicy
+      ? mapBucketPolicyFromWire(raw.adminPolicy)
+      : null,
+  }
 }
 
 export default class FileManager extends ExternalClient {
  
-  constructor(protected context: IOContext, options?: InstanceOptions) {
+  constructor(protected context: IOContext, options?: InstanceOptions, userToken?: string) {
     super(
       `http://app.io.vtex.com/vtex.file-manager/v0/${context.account}/${context.workspace}`,
       context,
@@ -40,7 +125,7 @@ export default class FileManager extends ExternalClient {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
-          'VtexIdclientAutCookie': context.authToken,
+          ...(userToken ? { VtexIdclientAutCookie: userToken } : {}),
           'Content-Type': 'application/json',
           'X-Vtex-Use-Https': 'true',
         },
@@ -121,4 +206,38 @@ export default class FileManager extends ExternalClient {
       }
     }
   }
+
+  public listPolicies = async (
+    marker?: string
+  ): Promise<{ policies: any[]; nextMarker: string | null }> => {
+    const qs = marker ? `?marker=${encodeURIComponent(marker)}` : ''
+    const raw = await this.http.get(`/policies${qs}`)
+    return {
+      policies: Array.isArray(raw?.policies)
+        ? raw.policies.map(mapPolicyViewFromWire)
+        : [],
+      nextMarker: raw?.nextMarker ?? null,
+    }
+  }
+
+  public getPolicy = async (bucket: string, app?: string | null): Promise<any> => {
+    const raw = await this.http.get(routes.Policy(bucket, app))
+    return mapPolicyViewFromWire(raw)
+  }
+
+  public setAdminPolicy = async (
+    bucket: string,
+    readAccess: string,
+    writeAccess: string,
+    app?: string | null
+  ): Promise<any> => {
+    const raw = await this.http.post(`${routes.Policy(bucket, app)}/admin`, {
+      readAccess: toWireAccessLevel(readAccess as GraphQLAccessLevel),
+      writeAccess: toWireAccessLevel(writeAccess as GraphQLAccessLevel),
+    })
+    return mapBucketPolicyFromWire(raw)
+  }
+
+  public deleteAdminPolicy = async (bucket: string, app?: string | null): Promise<any> =>
+    this.http.delete(`${routes.Policy(bucket, app)}/admin`)
 }
