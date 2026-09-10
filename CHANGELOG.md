@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- GraphQL proxy for bucket access policies: `listBucketPolicies`, `getBucketPolicy`, `setBucketPolicy`, and `deleteBucketPolicy`, forwarding to `vtex.file-manager`'s `/policies/*` API. `get`/`set`/`delete` accept an optional `app` argument so callers can target the exact entry returned by the listing.
+- Declare the `vtex.file-manager:file-manager-bucket-config-rw` resource policy required to reach those routes.
+
+### Changed
+
+- Forward the resolved end-user token as `VtexIdclientAutCookie` on outbound calls to `vtex.file-manager`, instead of this app's own `authToken`. The header is omitted for anonymous callers.
+
 ## [0.7.7] - 2026-05-21
 
 ### Security
