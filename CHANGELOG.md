@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-10
+
 ### Added
 
 - GraphQL proxy for bucket access policies: `listBucketPolicies`, `getBucketPolicy`, `setBucketPolicy`, and `deleteBucketPolicy`, forwarding to `vtex.file-manager`'s `/policies/*` API. `get`/`set`/`delete` accept an optional `app` argument so callers can target the exact entry returned by the listing.
