@@ -268,6 +268,28 @@ describe('FileManager policies methods', () => {
     })
   })
 
+  // Live @vtex/api http.delete returns undefined even when file-manager sends
+  // { bucket, removedAt }. GraphQL then fails: DeleteBucketPolicyResult.bucket is String!.
+  it.each([undefined, null, '', {}])(
+    'deleteAdminPolicy synthesizes { bucket, removedAt } when the HTTP body is %j',
+    async emptyBody => {
+      const { fileManager, http } = makeClient()
+      const now = '2026-09-11T00:44:59.000Z'
+      jest.spyOn(Date.prototype, 'toISOString').mockReturnValue(now)
+
+      http.delete.mockResolvedValue(emptyBody)
+
+      try {
+        await expect(fileManager.deleteAdminPolicy('b1')).resolves.toEqual({
+          bucket: 'b1',
+          removedAt: now,
+        })
+      } finally {
+        jest.restoreAllMocks()
+      }
+    }
+  )
+
   it('listPolicies propagates an HTTP rejection unchanged', async () => {
     const { fileManager, http } = makeClient()
     const err = { response: { status: 403 } }
