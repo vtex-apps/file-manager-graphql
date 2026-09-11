@@ -22,7 +22,7 @@ describe('FileManager constructor headers', () => {
     authToken: 'SENTINEL_APP_TOKEN',
   }
 
-  it('includes VtexIdclientAutCookie equal to the token when userToken is passed', () => {
+  it('sends both identities when a userToken is passed: app token authorizes, user token identifies', () => {
     const userToken = 'resolved-user-token-123'
     const fileManager = new FileManager(
       baseContext as any,
@@ -32,6 +32,7 @@ describe('FileManager constructor headers', () => {
     const headers = (fileManager as any).options.headers
 
     expect(headers).toHaveProperty('VtexIdclientAutCookie', userToken)
+    expect(headers).toHaveProperty('Authorization', 'SENTINEL_APP_TOKEN')
   })
 
   it('omits the VtexIdclientAutCookie key entirely when userToken is undefined', () => {
@@ -45,19 +46,29 @@ describe('FileManager constructor headers', () => {
     expect(headers).not.toHaveProperty('VtexIdclientAutCookie')
   })
 
-  it('never reads context.authToken for the outbound header', () => {
-    const contextWithSentinel = {
-      ...baseContext,
-      authToken: 'SENTINEL_SHOULD_NOT_BE_USED',
-    }
+  /* Regression guard: a previous revision asserted the *absence* of this header, encoding
+   * the outage (403s on every unprivileged upload) as expected behavior. */
+  it('always sends context.authToken as Authorization, even with no user token', () => {
     const fileManager = new FileManager(
-      contextWithSentinel as any,
+      baseContext as any,
       undefined,
       undefined
     )
     const headers = (fileManager as any).options.headers
 
-    expect(headers).not.toHaveProperty('VtexIdclientAutCookie')
+    expect(headers).toHaveProperty('Authorization', 'SENTINEL_APP_TOKEN')
+  })
+
+  it('never lets the user token stand in as the hop credential', () => {
+    const userToken = 'resolved-user-token-123'
+    const fileManager = new FileManager(
+      baseContext as any,
+      undefined,
+      userToken
+    )
+    const headers = (fileManager as any).options.headers
+
+    expect(headers.Authorization).not.toBe(userToken)
   })
 })
 

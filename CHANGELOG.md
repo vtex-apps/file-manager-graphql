@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- Restore this app's own `authToken` as the `Authorization` header on outbound calls to `vtex.file-manager`. 0.8.0 replaced it with the end-user token instead of adding to it, leaving the request with no credential the platform router accepts: every `/assets/*` route there is `public: false` and no end-user role can satisfy it, so CMS uploads failed with an embedded `403 Forbidden` from `Vtex.Kube.Router` for any caller that was not a privileged user. The end-user token continues to be forwarded as `VtexIdclientAutCookie`, now purely as identity for bucket-policy classification.
+
 ## [0.8.1] - 2026-09-11
 
 ### Fixed

@@ -125,6 +125,10 @@ export default class FileManager extends ExternalClient {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
+          /* `Authorization` authorizes the app-to-app hop (public: false routes reject a
+           * user-only token); `VtexIdclientAutCookie` is end-user identity for file-manager's
+           * bucket-policy checks. Both are required -- neither substitutes for the other. */
+          Authorization: context.authToken,
           ...(userToken ? { VtexIdclientAutCookie: userToken } : {}),
           'Content-Type': 'application/json',
           'X-Vtex-Use-Https': 'true',
