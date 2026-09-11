@@ -125,21 +125,9 @@ export default class FileManager extends ExternalClient {
         ...(options ?? {}),
         headers: {
           ...(options?.headers ?? {}),
-          // Two distinct identities travel on this hop, and both are required.
-          //
-          // `Authorization` carries this app's own token and is what *authorizes* the request:
-          // every /assets/* route on vtex.file-manager is declared `public: false`, and no
-          // end-user role can ever satisfy it -- that app declares no License Manager resource
-          // for those routes, so the permission does not exist to be granted to a person. A
-          // request presenting only a user token is refused by kube-router with 403 ("Role
-          // User:... cannot perform action PUT on resource vrn:vtex.file-manager:...") before
-          // ever reaching the service. Dropping this header broke every CMS upload whose caller
-          // was not a privileged user.
-          //
-          // `VtexIdclientAutCookie` carries the end user and is identity *only*: file-manager's
-          // UserCredentialService reads it to classify the caller's access level against the
-          // bucket policy. It is absent for anonymous callers (see the uploadFile ALLOW_LIST
-          // bypass in ../directives/auth), which is why it can never be the hop's credential.
+          /* `Authorization` authorizes the app-to-app hop (public: false routes reject a
+           * user-only token); `VtexIdclientAutCookie` is end-user identity for file-manager's
+           * bucket-policy checks. Both are required -- neither substitutes for the other. */
           Authorization: context.authToken,
           ...(userToken ? { VtexIdclientAutCookie: userToken } : {}),
           'Content-Type': 'application/json',

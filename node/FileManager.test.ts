@@ -46,11 +46,8 @@ describe('FileManager constructor headers', () => {
     expect(headers).not.toHaveProperty('VtexIdclientAutCookie')
   })
 
-  // Regression guard: /assets/* on vtex.file-manager is `public: false` and rejects end-user
-  // identities outright, so the app token must be present on every request regardless of
-  // whether a user session could be resolved -- the anonymous case (uploadFile's ALLOW_LIST
-  // bypass) is precisely the one that has no user token to fall back on. A previous revision
-  // asserted the *absence* of this header, which encoded the outage as expected behavior.
+  /* Regression guard: a previous revision asserted the *absence* of this header, encoding
+   * the outage (403s on every unprivileged upload) as expected behavior. */
   it('always sends context.authToken as Authorization, even with no user token', () => {
     const fileManager = new FileManager(
       baseContext as any,
