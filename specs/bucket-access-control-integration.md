@@ -2,11 +2,10 @@
 
 > **Status**: Approved
 > **Created**: 2026-08-07
-> **Updated**: 2026-09-11
+> **Updated**: 2026-09-04
 > **Epic**: STR-773
 > **RFC**: Controle de Acesso a Arquivos no vtex.file-manager (Phases 4 and 9)
 > **Upstream dependency**: `vtex.file-manager` — spec `bucket-access-control` (US-2, US-4)
-> **Postmortem addendum (2026-09-11)**: US-1 as originally specified caused a production incident — see Decision 8. `VtexIdclientAutCookie`'s source is unchanged from the original decision (still never `context.authToken`); a separate `Authorization` header was added additively.
 
 ## 1. Business Context
 
@@ -97,7 +96,7 @@ This spec covers both parts owned by `file-manager-graphql` (correct token forwa
 
 ### Non-Functional Requirements
 
-- The token-forwarding change (US-1) must not introduce a new outbound-access policy — the destination remains `vtex.file-manager`, and `VtexIdclientAutCookie` keeps resolving exclusively to the end-user token. What **does** change on the file-manager side is the credential it **reads**: it must consume that cookie (US-1b), not keep using `X-Vtex-Credential` for end-user identity. Per Decision 8 (postmortem), the app also sends `Authorization: context.authToken` unconditionally on every call, as a second, additive header — required for `kube-router`'s existing app-to-app grant on `/assets/*`, and never used by file-manager for end-user classification.
+- The token-forwarding change (US-1) must not introduce a new outbound-access policy — the destination remains `vtex.file-manager` and the header this app sends remains `VtexIdclientAutCookie`. What **does** change on the file-manager side is the credential it **reads**: it must consume that cookie (US-1b), not keep using `X-Vtex-Credential` for end-user identity.
 - The new `/policies/*` proxy methods must reuse the same `ExternalClient`/`FileManager` HTTP infrastructure already used for file operations, not introduce a second client.
 - `listBucketPolicies` must not perform N+1 calls — it is one or more calls to `GET /policies` (paginated), never one call per bucket.
 - Unlike US-1, US-2/US-3 **do** require a new app-to-app authorization grant: `vtex.file-manager`'s current `policies.json` only scopes `file-manager-read-write` over `.../:/assets/*`, which does not cover `/policies/*`. This app's `manifest.json` declares the published `file-manager-bucket-config-rw` resource policy (VRN `.../:/policies/*`, see Decision 6) — without it, `kube-router` rejects every `/policies/*` call with `403` before the request reaches file-manager's controller, regardless of the caller's LicenseManager permissions. This is a coarse app-to-app gate (which apps may call this path at all), distinct from and in addition to file-manager's own LicenseManager `file-manager-bucket-config` check (which user is authorized once the call is let through) — the router-level policy determines eligibility to call, not permission to act.
@@ -154,7 +153,7 @@ flowchart TD
 
 | Alternative | Pros | Cons | Verdict |
 |---|---|---|---|
-| Fall back to `context.authToken` **inside `VtexIdclientAutCookie`** when the end-user token is absent, instead of omitting the header | Preserves current behavior for callers that never had a user session | Reintroduces exactly the bug this spec fixes — file-manager would classify an app-token request as if it belonged to a real (anonymous-looking) user, defeating the purpose of the change | Rejected — omitting the header is the correct anonymous representation, matching file-manager's own convention. **Not the same as Decision 8**, which sends `context.authToken` on a distinct `Authorization` header, never inside `VtexIdclientAutCookie` |
+| Fall back to `context.authToken` when the end-user token is absent, instead of omitting the header | Preserves current behavior for callers that never had a user session | Reintroduces exactly the bug this spec fixes — file-manager would classify an app-token request as if it belonged to a real (anonymous-looking) user, defeating the purpose of the change | Rejected — omitting the header is the correct anonymous representation, matching file-manager's own convention |
 | Use only `adminUserAuthToken` (or only `storeUserAuthToken`) as the single source, instead of resolving across both plus the raw-header fallback | Simpler, single-field read | Silently drops one of the two real login contexts this app serves (Admin Panel bucket-policy mutations use the admin cookie; store-form uploads use the store cookie or a raw header) — whichever is dropped gets misclassified as anonymous | Rejected — must reuse the existing three-way resolution already implemented in `authFromCookie` (`node/directives/auth.ts`) |
 | Add `/policies/*` proxy methods to a brand-new client instead of extending `FileManager` | Clean separation of "file" vs. "policy" concerns | Duplicates HTTP/base-URL/error-handling setup already correct in `FileManager`; file-manager exposes both concerns from the same base URL and service | Rejected — no architectural boundary in file-manager itself justifies a second client here |
 | Reuse Sphinx `isAdmin` as a **permission** check (replacing License Manager) for `/policies/*` | One less hop | Diverges from file-manager's `file-manager-bucket-config` resource; Admin without the resource would never see the original 403 | Rejected — Sphinx is only a population filter (Admin vs store), same as `deleteFile`; License Manager remains the permission oracle (Decision 5) |
@@ -166,7 +165,7 @@ flowchart TD
 |---|---|---|---|
 | US-1 ships before `vtex.file-manager`'s hot-path enforcement (US-4) is active | None — file-manager currently accepts any token value; forwarding a different (correct) token has no behavioral effect until enforcement is activated | High (expected sequencing) | Safe to deploy independently; US-1 is a prerequisite for file-manager's activation gate, not something that itself needs a feature flag |
 | US-4 ships before US-1b (file-manager still only reads `CredentialService` / `X-Vtex-Credential`) | High — every caller of this app is classified as the graphql **app** (or fails the user check), so `AUTHENTICATED` / `ACCOUNT_ADMINISTRATOR` buckets break for Admin | Medium (easy to miss: the cookie is already sent today and ignored) | Blocking cross-repo gate: do not activate US-4 for this hop until file-manager reads `VtexIdclientAutCookie` (Decision 7) |
-| Some existing caller path relies on `context.authToken` implicitly granting elevated access to file-manager today (since app tokens are not currently distinguished from user tokens) | **Materialized as a production incident, 2026-09-10** — `kube-router`'s existing `/assets/*` grant (not just file-manager's own enforcement) turned out to depend on this token; unprivileged real users got `403` from the router itself, independent of file-manager's (disabled) activation gate | ~~Low~~ **Realized** | Original mitigation ("covered by file-manager's own activation-gate risk register") did not account for the router-level gate having no such flag. Fixed by Decision 8: send `context.authToken` on a separate, additive `Authorization` header |
+| Some existing caller path relies on `context.authToken` implicitly granting elevated access to file-manager today (since app tokens are not currently distinguished from user tokens) | Medium — if any current flow depends on the app-token side effect, that flow could start behaving differently in this app once file-manager activates enforcement | Low (file-manager's own spec does not describe today's access as differentiated by token type) | Covered by file-manager's own activation-gate risk register; this spec only ensures correct token *type* is sent, not a new business rule in this app |
 | `/policies/*` proxy resolvers get out of sync with file-manager's schema (e.g. a new field added to `BucketPolicy`) | Low | Medium (two independently versioned repos) | This app declares an explicit `dependencies: { "vtex.file-manager": "0.x" }` pin (already the case); schema changes on either side go through their own spec/PR review |
 | The platform's app-to-app routing (`kube-router`) silently drops `VtexIdclientAutCookie` | High — would silently defeat US-1 even after a correct implementation | Low (validated) | `VtexIdclientAutCookie` is **not** in kube-router `HeaderGroups.Ignored`; `X-Vtex-Credential` **is** and is reminted as the app token. Live hop from a linked workspace completed (`getFile` reached file-manager: 404, not 401/403). Mesh/kube-router logs do not index cookie header names — absence in logs is not evidence of a drop. See Validation Plan. |
 
@@ -240,13 +239,6 @@ Repo search of `vtex.file-manager`: zero uses of `VtexIdclientAutCookie`. `Crede
 - **Context**: This app already sends `VtexIdclientAutCookie` on every `FileManager` call. `vtex.file-manager` today authenticates via `CredentialService.GetToken()`, which reads `X-Vtex-Credential`. kube-router's `HeaderGroups.Ignored` includes `X-Vtex-Credential` and remints it as the destination **app** hop token (`AddCredentialHeaders` / `AssumeRole`). `VtexIdclientAutCookie` is not in that ignore list and survives the hop (Validation Plan Step 2). Using `CredentialService` for LicenseManager / US-4 would therefore classify every caller of this app as the graphql app, never as the Admin or store user.
 - **Decision**: For end-user classification (LicenseManager `file-manager-bucket-config`, bucket-policy enforcement US-4) on requests that originate from this app, `vtex.file-manager` **must read `VtexIdclientAutCookie`**. It must **not** use `X-Vtex-Credential` / `CredentialService.GetToken()` as the end-user identity. Absence of `VtexIdclientAutCookie` means anonymous, even when `X-Vtex-Credential` is present. Implementation is in the file-manager repo (US-1b); this spec owns the hop contract. Builder-hub manifest calls remain on the service/vendor identity path and do not use this cookie.
 - **Consequences**: US-1 in this app is necessary but not sufficient for US-4. Activating hot-path enforcement before US-1b ships breaks Admin `AUTHENTICATED` / `ACCOUNT_ADMINISTRATOR` access through this proxy. File-manager's own `bucket-access-control` spec must be updated to match this decision.
-
-#### Decision 8 (postmortem, 2026-09-11): Restore `Authorization: context.authToken` as a second, additive header — the existing `/assets/*` router grant depends on it too
-
-- **Status**: Accepted
-- **Context**: US-1 shipped as originally specified (0.8.0) and caused a production incident. `kube-router`'s app-to-app grant check for the *existing* `file-manager-read-write` policy on `/assets/*` (Decision 6 only analyzed this router-level gate for the *new* `/policies/*` grant) turned out to key off whichever credential this app actually sent — before US-1, that was `context.authToken` carried in `VtexIdclientAutCookie`, which the router recognized as belonging to the app itself and matched against this app's manifest-declared policy. After US-1 removed that token with no replacement, the router evaluated the real end-user token instead, found no LicenseManager resource grant for the (unprivileged) end user, and rejected the request with `403 Forbidden` from `Vtex.Kube.Router` — before it ever reached file-manager's controller. This reproduced live: `POST /assets/vtex.file-manager-graphql/save/images/...` for a non-privileged store admin user (`cesar.acero@infracommerce.lat`, account `farmaonline`) failed with `403`, `source: "Vtex.Kube.Router"`, `"Role User:cesar.acero@... cannot perform action PUT on resource vrn:vtex.file-manager:...:/assets/..."` — confirming the router itself denied the hop, independent of file-manager's own `BucketPolicyEnforcementEnabled` flag (which was, and still is, `false` in production; US-4 was never active). The Risks table below already flagged this exact scenario ("Some existing caller path relies on `context.authToken` implicitly granting elevated access") but rated it "Low" likelihood on the assumption it was covered by file-manager's *own* activation gate — that assumption did not account for the router-level gate having no such flag.
-- **Decision**: `FileManager`'s constructor sends `Authorization: context.authToken` **unconditionally, on every call**, in addition to (not instead of) `VtexIdclientAutCookie`. This is additive, not a reversal of Decision 2/7: `VtexIdclientAutCookie` keeps resolving exclusively to the end-user token and is still omitted when absent — the app's own token never populates it. `Authorization` is a separate header the router already inspects for the app-to-app grant; it plays no role in file-manager's own LicenseManager/bucket-policy classification (file-manager's C# code does not read `Authorization` at all — see `HeaderNames.cs`/`CredentialService.cs`).
-- **Consequences**: The alternative rejected as "reintroduces exactly the bug" in Alternatives Considered is *not* this — that alternative was falling back to `context.authToken` **inside `VtexIdclientAutCookie`** when no user token exists, which would still let file-manager misclassify an app-token request as a real (anonymous-looking) user. Decision 8 never does that; it keeps the two identities on two separate headers, each read by a separate system (router vs. file-manager), which is consistent with — not a violation of — Decision 7's separation of concerns. Every code snippet and NFR in this spec that shows only `VtexIdclientAutCookie` being sent (Technical Contract §3, NFR on outbound-access policy) is updated accordingly. **Open follow-up, not yet validated**: whether `kube-router` still grants correctly when *both* headers are present simultaneously (the incident only proved the failure mode when `Authorization` is *absent*) — pending a live test with a non-privileged user token in a linked workspace. Tracked as a follow-up on PR #36; the PR remains in draft until this is confirmed.
 
 ### Implementation Plan
 
@@ -323,26 +315,19 @@ deleteAdminPolicy(bucket: string, app?: string): Promise<{ bucket: string; remov
   → DELETE /policies/{app ?? runningAppName}/{bucket}/admin
 ```
 
-Updated constructor (`node/FileManager.ts`), replacing the current hardcoded `context.authToken` **on `VtexIdclientAutCookie`** with the resolved end-user token, and additively restoring `context.authToken` on `Authorization` (Decision 8). The three-way resolution (Decision 2) lives in `resolveUserToken` (`node/directives/auth.ts`, shared with `authFromCookie`) and is resolved once per request at each resolver call site, then passed into the constructor as `userToken` — not re-resolved inside `FileManager` itself:
+Updated constructor (`node/FileManager.ts`), replacing the current hardcoded `context.authToken` with the resolved end-user token (Decision 2, same precedence as `authFromCookie` in `node/directives/auth.ts`):
 
 ```
-// node/resolvers/index.ts, at each call site
-const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+const resolvedUserToken =
+  context.adminUserAuthToken ??
+  rawVtexIdClientAutCookieHeader ??  // read the same way authFromCookie does, from the raw request header
+  context.storeUserAuthToken
 
-// node/FileManager.ts
-constructor(protected context: IOContext, options?: InstanceOptions, userToken?: string) {
-  super(baseUrl, context, {
-    ...(options ?? {}),
-    headers: {
-      ...(options?.headers ?? {}),
-      /* Authorization authorizes the app-to-app hop at the router (Decision 8);
-       * VtexIdclientAutCookie is end-user identity for file-manager's own bucket-policy checks. */
-      Authorization: context.authToken,
-      ...(userToken ? { VtexIdclientAutCookie: userToken } : {}),
-      'Content-Type': 'application/json',
-      'X-Vtex-Use-Https': 'true',
-    },
-  })
+headers: {
+  ...(options?.headers ?? {}),
+  ...(resolvedUserToken ? { VtexIdclientAutCookie: resolvedUserToken } : {}),
+  'Content-Type': 'application/json',
+  'X-Vtex-Use-Https': 'true',
 }
 ```
 
@@ -372,14 +357,13 @@ deleteBucketPolicy: async (_: unknown, args: { bucket: string; app?: string }, c
 
 ### Integration Points
 
-- **`vtex.file-manager`** (existing dependency, `dependencies: { "vtex.file-manager": "0.x" }` in `manifest.json`): all four file operations plus the four new `/policies/*` operations, over the existing `ExternalClient` base URL. Two headers travel on every call, each for a different layer (Decision 8): `Authorization: context.authToken`, unconditional, authorizes the app-to-app hop at `kube-router` against this app's manifest-declared policy; `VtexIdclientAutCookie` (Decision 7 / US-1b) carries the end-user identity that file-manager must consume for LicenseManager/bucket-policy classification — `X-Vtex-Credential` is the router-reminted app hop token and is not the end-user, and `Authorization` is not read by file-manager's own classification logic either. The four `/policies/*` operations additionally require this app's `manifest.json` to declare a new resource policy that `vtex.file-manager` must publish first (Decision 6) — the existing `file-manager-read-write` policy does not cover `/policies/*`.
+- **`vtex.file-manager`** (existing dependency, `dependencies: { "vtex.file-manager": "0.x" }` in `manifest.json`): all four file operations plus the four new `/policies/*` operations, over the existing `ExternalClient` base URL. User identity on this hop is the HTTP header `VtexIdclientAutCookie` (Decision 7 / US-1b) — file-manager must consume it; `X-Vtex-Credential` is the reminted app hop token and is not the end-user. The four `/policies/*` operations additionally require this app's `manifest.json` to declare a new resource policy that `vtex.file-manager` must publish first (Decision 6) — the existing `file-manager-read-write` policy does not cover `/policies/*`.
 - **Admin Panel** (consumer, out of scope): will call `listBucketPolicies`, `getBucketPolicy`, `setBucketPolicy`, `deleteBucketPolicy` through this app's GraphQL schema — this spec only guarantees the contract exists and behaves as documented above.
 
 ### Invariants & Constraints
 
-- `VtexIdclientAutCookie` is never populated from `context.authToken` for any file or policy operation after this spec is implemented — this holds before and after Decision 8; the postmortem fix added a separate header, it did not touch this one.
-- `Authorization` always carries `context.authToken` on every call to `vtex.file-manager`, regardless of whether a user token is present (Decision 8) — required for the router-level app-to-app grant; this header carries no end-user identity and file-manager's own classification logic must not read it.
-- On this hop, `vtex.file-manager` classifies the end user from `VtexIdclientAutCookie`, never from `X-Vtex-Credential` / `CredentialService.GetToken()` / `Authorization`. Missing `VtexIdclientAutCookie` is anonymous even when `X-Vtex-Credential` or `Authorization` is present.
+- `VtexIdclientAutCookie` is never populated from `context.authToken` for any file or policy operation after this spec is implemented.
+- On this hop, `vtex.file-manager` classifies the end user from `VtexIdclientAutCookie`, never from `X-Vtex-Credential` / `CredentialService.GetToken()`. Missing `VtexIdclientAutCookie` is anonymous even when `X-Vtex-Credential` is present.
 - `POST /policies/{bucket}/manifest` is never reachable through this app's GraphQL schema.
 - Every `403`/error returned by `vtex.file-manager` for a `/policies/*` call reaches the GraphQL caller with its original message and status, never replaced by a generic `InternalServerError`.
 - `listBucketPolicies` always returns a fully paginated, deduplicated list — it never silently returns only the first page.
