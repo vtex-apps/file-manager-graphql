@@ -238,6 +238,24 @@ export default class FileManager extends ExternalClient {
     return mapBucketPolicyFromWire(raw)
   }
 
-  public deleteAdminPolicy = async (bucket: string, app?: string | null): Promise<any> =>
-    this.http.delete(`${routes.Policy(bucket, app)}/admin`)
+  public deleteAdminPolicy = async (
+    bucket: string,
+    app?: string | null
+  ): Promise<any> => {
+    const raw: any = await this.http.delete(`${routes.Policy(bucket, app)}/admin`)
+
+    // @vtex/api's http.delete drops the JSON body (live: undefined), so GraphQL would
+    // fail on DeleteBucketPolicyResult.bucket: String! even after a successful delete.
+    if (raw && typeof raw === 'object' && raw.bucket) {
+      return raw
+    }
+
+    return {
+      bucket,
+      removedAt:
+        raw && typeof raw === 'object' && raw.removedAt
+          ? raw.removedAt
+          : new Date().toISOString(),
+    }
+  }
 }
