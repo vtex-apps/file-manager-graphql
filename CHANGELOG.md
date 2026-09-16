@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking (GraphQL schema)**: `BucketPolicyView.effectivePolicy`/`manifestPolicy`/`adminPolicy` are replaced by a single `policy: BucketPolicy!` field, matching `vtex.file-manager`'s removal of its manifest-policy tier (`file-manager` STR-773 amendment). `vtex.file-manager`'s `/policies/*` read routes now return `{ app, bucket, policy }` instead of the three-source shape; there is no longer a separate manifest source to reconcile against. `listBucketPolicies`/`getBucketPolicy` consumers must switch from `effectivePolicy`/`manifestPolicy`/`adminPolicy` to `policy`. `setBucketPolicy`/`deleteBucketPolicy` (the `/admin` write routes) are unaffected.
+
 ## [0.8.2] - 2026-09-14
 
 ### Fixed

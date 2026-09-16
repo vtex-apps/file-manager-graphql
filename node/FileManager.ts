@@ -105,13 +105,7 @@ export const mapPolicyViewFromWire = (raw: any): any => {
 
   return {
     ...raw,
-    effectivePolicy: mapBucketPolicyFromWire(raw.effectivePolicy),
-    manifestPolicy: raw.manifestPolicy
-      ? mapBucketPolicyFromWire(raw.manifestPolicy)
-      : null,
-    adminPolicy: raw.adminPolicy
-      ? mapBucketPolicyFromWire(raw.adminPolicy)
-      : null,
+    policy: mapBucketPolicyFromWire(raw.policy),
   }
 }
 
