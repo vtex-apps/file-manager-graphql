@@ -158,34 +158,26 @@ describe('FileManager policies methods', () => {
     })
   })
 
-  it('listPolicies maps nested access levels back to GraphQL values and preserves null policies', async () => {
+  it('listPolicies maps nested access levels back to GraphQL values', async () => {
     const { fileManager, http } = makeClient()
 
     http.get.mockResolvedValue({
       policies: [
         {
+          app: 'acme',
           bucket: 'b1',
-          effectivePolicy: {
+          policy: {
             readAccess: 'public',
             writeAccess: 'authenticated',
           },
-          manifestPolicy: null,
-          adminPolicy: {
-            readAccess: 'account-administrator',
-            writeAccess: 'public',
-          },
         },
         {
+          app: 'acme',
           bucket: 'b2',
-          effectivePolicy: {
+          policy: {
             readAccess: 'authenticated',
             writeAccess: 'account-administrator',
           },
-          manifestPolicy: {
-            readAccess: 'public',
-            writeAccess: 'public',
-          },
-          adminPolicy: null,
         },
       ],
       nextMarker: null,
@@ -197,28 +189,20 @@ describe('FileManager policies methods', () => {
     expect(result.nextMarker).toBeNull()
     expect(result.policies).toHaveLength(2)
     expect(result.policies[0]).toEqual({
+      app: 'acme',
       bucket: 'b1',
-      effectivePolicy: {
+      policy: {
         readAccess: 'PUBLIC',
         writeAccess: 'AUTHENTICATED',
       },
-      manifestPolicy: null,
-      adminPolicy: {
-        readAccess: 'ACCOUNT_ADMINISTRATOR',
-        writeAccess: 'PUBLIC',
-      },
     })
     expect(result.policies[1]).toEqual({
+      app: 'acme',
       bucket: 'b2',
-      effectivePolicy: {
+      policy: {
         readAccess: 'AUTHENTICATED',
         writeAccess: 'ACCOUNT_ADMINISTRATOR',
       },
-      manifestPolicy: {
-        readAccess: 'PUBLIC',
-        writeAccess: 'PUBLIC',
-      },
-      adminPolicy: null,
     })
   })
 
@@ -235,30 +219,28 @@ describe('FileManager policies methods', () => {
     expect(http.get).toHaveBeenCalledWith('/policies?marker=next-page-token')
   })
 
-  it('getPolicy maps a single raw response and preserves null policies', async () => {
+  it('getPolicy maps a single raw response', async () => {
     const { fileManager, http } = makeClient()
 
     http.get.mockResolvedValue({
+      app: 'acme',
       bucket: 'b1',
-      effectivePolicy: {
+      policy: {
         readAccess: 'public',
         writeAccess: 'public',
       },
-      manifestPolicy: null,
-      adminPolicy: null,
     })
 
     const result = await fileManager.getPolicy('b1')
 
     expect(http.get).toHaveBeenCalledWith('/policies//b1')
     expect(result).toEqual({
+      app: 'acme',
       bucket: 'b1',
-      effectivePolicy: {
+      policy: {
         readAccess: 'PUBLIC',
         writeAccess: 'PUBLIC',
       },
-      manifestPolicy: null,
-      adminPolicy: null,
     })
   })
 

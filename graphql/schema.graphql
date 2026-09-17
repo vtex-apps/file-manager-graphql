@@ -17,12 +17,11 @@ type DeleteBucketPolicyResult {
 }
 
 type BucketPolicyView {
-  """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps. Nullable (Bugbot follow-up): file-manager derives this from the stored admin/manifest policy document's own App field (BuildViewAsync), which can be absent for an indexed bucket whose only policy source is a hardcoded fallback, or transiently during the index/document race documented in DeindexBucketKeyIfUnusedAsync -- declaring this non-null would fail the entire listBucketPolicies query for one such entry instead of returning it with app: null."""
+  """The app that owns this bucket. listBucketPolicies spans every app sharing this account/workspace, so this disambiguates buckets that share the same plain name across different apps. Nullable (Bugbot follow-up): file-manager derives this from the stored admin policy document's own App field (BuildViewAsync), which can be absent for an indexed bucket whose only policy source is the reserved-bucket fixed table, or transiently during the index/document race documented in DeindexBucketKeyAsync -- declaring this non-null would fail the entire listBucketPolicies query for one such entry instead of returning it with app: null."""
   app: String
   bucket: String!
-  effectivePolicy: BucketPolicy!
-  manifestPolicy: BucketPolicy
-  adminPolicy: BucketPolicy
+  """The resolved effective policy: the bucket's admin policy if one is configured, else the reserved-bucket fixed value for the 3 platform-critical buckets, else the global default. There is only ever one source in effect -- file-manager removed the separate manifest-policy tier this used to reconcile against (STR-773 amendment)."""
+  policy: BucketPolicy!
 }
 
 type File {
