@@ -1,7 +1,7 @@
 import { defaultFieldResolver, GraphQLField } from 'graphql'
 import { SchemaDirectiveVisitor } from 'graphql-tools'
 
-import { ALLOW_LIST } from '../config/allowList'
+import FileManager from '../FileManager'
 
 export const resolveUserToken = (ctx: any): string | undefined => {
   const token =
@@ -54,6 +54,29 @@ export const authFromCookie = async (ctx: any, operationName: string) => {
   return true
 }
 
+/**
+ * uploadFile bypasses the login requirement when the target bucket's own policy already
+ * allows anonymous writes -- file-manager enforces that policy on the write itself (US-4), so
+ * requiring a login here on top of it would just be a redundant, stricter gate that doesn't
+ * match the bucket owner's own configuration. Replaces the old static ALLOW_LIST: that always
+ * granted every account in it a bypass regardless of how its bucket was actually configured,
+ * and never adjusted when a bucket's policy changed.
+ */
+export const isBucketPubliclyWritable = async (
+  ctx: any,
+  bucket: string
+): Promise<boolean> => {
+  try {
+    const fileManager = new FileManager(ctx.vtex)
+    const { policy } = await fileManager.getPolicy(bucket)
+
+    return policy?.writeAccess === 'PUBLIC'
+  } catch {
+    // Fail closed: if the policy can't be resolved, don't grant an auth bypass.
+    return false
+  }
+}
+
 export class Authorization extends SchemaDirectiveVisitor {
   public visitFieldDefinition(field: GraphQLField<any, any>) {
     const { resolve = defaultFieldResolver } = field
@@ -64,11 +87,7 @@ export class Authorization extends SchemaDirectiveVisitor {
       let isAllowed = false
 
       if (operationName === 'uploadFile') {
-        const isInAllowList = ALLOW_LIST.includes(ctx.vtex.account)
-
-        if (isInAllowList) {
-          isAllowed = true
-        }
+        isAllowed = await isBucketPubliclyWritable(ctx, args.bucket)
       }
 
       if (!isAllowed) {

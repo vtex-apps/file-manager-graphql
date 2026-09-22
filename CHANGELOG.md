@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-22
+
+### Changed
+- **Breaking (behavior)**: the static `ALLOW_LIST` bypass for `uploadFile` is removed. Instead, `uploadFile` checks the target bucket's actual policy (`GET /policies/{app}/{bucket}`, now public for `readAccess`/`writeAccess` per `vtex.file-manager`'s US-4 activation) and skips the login requirement only when `writeAccess` is `PUBLIC`. Accounts that were in the allow list keep the same unauthenticated-upload behavior as long as their bucket's `writeAccess` is `public` (the allow-list migration set this for `vtex.file-manager-graphql/images` on those accounts); the difference is the bypass now tracks the bucket's real, current policy instead of a hardcoded account list. If the policy lookup fails, the check fails closed (falls through to requiring a login).
+
 ## [0.9.0] - 2026-09-17
 
 ### Changed

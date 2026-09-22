@@ -1,4 +1,13 @@
-import { authFromCookie, resolveUserToken } from './auth'
+const mockGetPolicy = jest.fn()
+
+jest.mock('../FileManager', () => ({
+  __esModule: true,
+  default: class {
+    getPolicy = mockGetPolicy
+  },
+}))
+
+import { authFromCookie, isBucketPubliclyWritable, resolveUserToken } from './auth'
 
 const buildCtx = ({
   cookie,
@@ -155,4 +164,40 @@ describe('authFromCookie', () => {
       expect(result).toBe(true)
     }
   )
+})
+
+describe('isBucketPubliclyWritable', () => {
+  beforeEach(() => {
+    mockGetPolicy.mockReset()
+  })
+
+  it('returns true when the bucket policy has writeAccess PUBLIC', async () => {
+    mockGetPolicy.mockResolvedValue({
+      policy: { readAccess: 'ACCOUNT_ADMINISTRATOR', writeAccess: 'PUBLIC' },
+    })
+
+    const result = await isBucketPubliclyWritable(buildCtx(), 'images')
+
+    expect(result).toBe(true)
+    expect(mockGetPolicy).toHaveBeenCalledWith('images')
+  })
+
+  it.each(['AUTHENTICATED', 'ACCOUNT_ADMINISTRATOR'])(
+    'returns false when writeAccess is %s',
+    async writeAccess => {
+      mockGetPolicy.mockResolvedValue({ policy: { writeAccess } })
+
+      const result = await isBucketPubliclyWritable(buildCtx(), 'images')
+
+      expect(result).toBe(false)
+    }
+  )
+
+  it('fails closed (returns false) when the policy lookup throws', async () => {
+    mockGetPolicy.mockRejectedValue(new Error('file-manager unreachable'))
+
+    const result = await isBucketPubliclyWritable(buildCtx(), 'images')
+
+    expect(result).toBe(false)
+  })
 })
