@@ -1,9 +1,9 @@
-const mockGetPolicy = jest.fn()
+const mockGetAccessLevels = jest.fn()
 
 jest.mock('../FileManager', () => ({
   __esModule: true,
   default: class {
-    getPolicy = mockGetPolicy
+    getAccessLevels = mockGetAccessLevels
   },
 }))
 
@@ -168,24 +168,25 @@ describe('authFromCookie', () => {
 
 describe('isBucketPubliclyWritable', () => {
   beforeEach(() => {
-    mockGetPolicy.mockReset()
+    mockGetAccessLevels.mockReset()
   })
 
-  it('returns true when the bucket policy has writeAccess PUBLIC', async () => {
-    mockGetPolicy.mockResolvedValue({
-      policy: { readAccess: 'ACCOUNT_ADMINISTRATOR', writeAccess: 'PUBLIC' },
+  it('returns true when writeAccess is PUBLIC', async () => {
+    mockGetAccessLevels.mockResolvedValue({
+      readAccess: 'ACCOUNT_ADMINISTRATOR',
+      writeAccess: 'PUBLIC',
     })
 
     const result = await isBucketPubliclyWritable(buildCtx(), 'images')
 
     expect(result).toBe(true)
-    expect(mockGetPolicy).toHaveBeenCalledWith('images')
+    expect(mockGetAccessLevels).toHaveBeenCalledWith('images')
   })
 
   it.each(['AUTHENTICATED', 'ACCOUNT_ADMINISTRATOR'])(
     'returns false when writeAccess is %s',
     async writeAccess => {
-      mockGetPolicy.mockResolvedValue({ policy: { writeAccess } })
+      mockGetAccessLevels.mockResolvedValue({ writeAccess })
 
       const result = await isBucketPubliclyWritable(buildCtx(), 'images')
 
@@ -193,8 +194,8 @@ describe('isBucketPubliclyWritable', () => {
     }
   )
 
-  it('fails closed (returns false) when the policy lookup throws', async () => {
-    mockGetPolicy.mockRejectedValue(new Error('file-manager unreachable'))
+  it('fails closed (returns false) when the access-levels lookup throws', async () => {
+    mockGetAccessLevels.mockRejectedValue(new Error('file-manager unreachable'))
 
     const result = await isBucketPubliclyWritable(buildCtx(), 'images')
 

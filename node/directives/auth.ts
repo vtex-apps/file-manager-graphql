@@ -68,9 +68,9 @@ export const isBucketPubliclyWritable = async (
 ): Promise<boolean> => {
   try {
     const fileManager = new FileManager(ctx.vtex)
-    const { policy } = await fileManager.getPolicy(bucket)
+    const { writeAccess } = await fileManager.getAccessLevels(bucket)
 
-    return policy?.writeAccess === 'PUBLIC'
+    return writeAccess === 'PUBLIC'
   } catch {
     // Fail closed: if the policy can't be resolved, don't grant an auth bypass.
     return false
