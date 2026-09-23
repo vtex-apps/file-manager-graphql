@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.10.0] - 2026-09-22
-
 ### Changed
 - **Breaking (behavior)**: `uploadFile` no longer carries `@requiresAuth`, and the static `ALLOW_LIST` that used to bypass it for a fixed set of accounts is removed. Authorization for uploads is now entirely `vtex.file-manager`'s: it enforces the bucket's `writeAccess` on the write itself, so a bucket set to `public` accepts anonymous uploads and any other level is rejected there. Rejections now surface as file-manager's status (wrapped by `saveFile` as `Fail to save file`) instead of `User must be logged to access this resource`. `deleteFile` and the bucket-policy operations are unaffected.
 
