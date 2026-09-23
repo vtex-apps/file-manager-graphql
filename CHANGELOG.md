@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [0.10.0] - 2026-09-22
 
 ### Changed
-- **Breaking (behavior)**: the static `ALLOW_LIST` bypass for `uploadFile` is removed. Instead, `uploadFile` checks the target bucket's real `writeAccess` via `vtex.file-manager`'s new always-public `GET /policies/{app}/{bucket}/access-levels` route, and skips the login requirement only when it's `PUBLIC`. Accounts that were in the allow list keep the same unauthenticated-upload behavior as long as their bucket's `writeAccess` is `public` (the allow-list migration set this for `vtex.file-manager-graphql/images` on those accounts); the difference is the bypass now tracks the bucket's real, current policy instead of a hardcoded account list. If the lookup fails, the check fails closed (falls through to requiring a login).
+- **Breaking (behavior)**: `uploadFile` no longer carries `@requiresAuth`, and the static `ALLOW_LIST` that used to bypass it for a fixed set of accounts is removed. Authorization for uploads is now entirely `vtex.file-manager`'s: it enforces the bucket's `writeAccess` on the write itself, so a bucket set to `public` accepts anonymous uploads and any other level is rejected there. Rejections now surface as file-manager's status (wrapped by `saveFile` as `Fail to save file`) instead of `User must be logged to access this resource`. `deleteFile` and the bucket-policy operations are unaffected.
 
 ## [0.9.0] - 2026-09-17
 

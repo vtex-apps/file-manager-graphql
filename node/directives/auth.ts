@@ -1,8 +1,6 @@
 import { defaultFieldResolver, GraphQLField } from 'graphql'
 import { SchemaDirectiveVisitor } from 'graphql-tools'
 
-import FileManager from '../FileManager'
-
 export const resolveUserToken = (ctx: any): string | undefined => {
   const token =
     ctx.cookies.get('VtexIdclientAutCookie') ??
@@ -54,48 +52,16 @@ export const authFromCookie = async (ctx: any, operationName: string) => {
   return true
 }
 
-/**
- * uploadFile bypasses the login requirement when the target bucket's own policy already
- * allows anonymous writes -- file-manager enforces that policy on the write itself (US-4), so
- * requiring a login here on top of it would just be a redundant, stricter gate that doesn't
- * match the bucket owner's own configuration. Replaces the old static ALLOW_LIST: that always
- * granted every account in it a bypass regardless of how its bucket was actually configured,
- * and never adjusted when a bucket's policy changed.
- */
-export const isBucketPubliclyWritable = async (
-  ctx: any,
-  bucket: string
-): Promise<boolean> => {
-  try {
-    const fileManager = new FileManager(ctx.vtex)
-    const { writeAccess } = await fileManager.getAccessLevels(bucket)
-
-    return writeAccess === 'PUBLIC'
-  } catch {
-    // Fail closed: if the policy can't be resolved, don't grant an auth bypass.
-    return false
-  }
-}
-
 export class Authorization extends SchemaDirectiveVisitor {
   public visitFieldDefinition(field: GraphQLField<any, any>) {
     const { resolve = defaultFieldResolver } = field
 
     // eslint-disable-next-line max-params
     field.resolve = async (root, args, ctx, info) => {
-      const operationName = info.fieldName
-      let isAllowed = false
+      const cookieAllowsAccess = await authFromCookie(ctx, info.fieldName)
 
-      if (operationName === 'uploadFile') {
-        isAllowed = await isBucketPubliclyWritable(ctx, args.bucket)
-      }
-
-      if (!isAllowed) {
-        const cookieAllowsAccess = await authFromCookie(ctx, operationName)
-
-        if (cookieAllowsAccess !== true) {
-          throw new Error(cookieAllowsAccess)
-        }
+      if (cookieAllowsAccess !== true) {
+        throw new Error(cookieAllowsAccess)
       }
 
       return resolve(root, args, ctx, info)

@@ -1,13 +1,4 @@
-const mockGetAccessLevels = jest.fn()
-
-jest.mock('../FileManager', () => ({
-  __esModule: true,
-  default: class {
-    getAccessLevels = mockGetAccessLevels
-  },
-}))
-
-import { authFromCookie, isBucketPubliclyWritable, resolveUserToken } from './auth'
+import { authFromCookie, resolveUserToken } from './auth'
 
 const buildCtx = ({
   cookie,
@@ -164,41 +155,4 @@ describe('authFromCookie', () => {
       expect(result).toBe(true)
     }
   )
-})
-
-describe('isBucketPubliclyWritable', () => {
-  beforeEach(() => {
-    mockGetAccessLevels.mockReset()
-  })
-
-  it('returns true when writeAccess is PUBLIC', async () => {
-    mockGetAccessLevels.mockResolvedValue({
-      readAccess: 'ACCOUNT_ADMINISTRATOR',
-      writeAccess: 'PUBLIC',
-    })
-
-    const result = await isBucketPubliclyWritable(buildCtx(), 'images')
-
-    expect(result).toBe(true)
-    expect(mockGetAccessLevels).toHaveBeenCalledWith('images')
-  })
-
-  it.each(['AUTHENTICATED', 'ACCOUNT_ADMINISTRATOR'])(
-    'returns false when writeAccess is %s',
-    async writeAccess => {
-      mockGetAccessLevels.mockResolvedValue({ writeAccess })
-
-      const result = await isBucketPubliclyWritable(buildCtx(), 'images')
-
-      expect(result).toBe(false)
-    }
-  )
-
-  it('fails closed (returns false) when the access-levels lookup throws', async () => {
-    mockGetAccessLevels.mockRejectedValue(new Error('file-manager unreachable'))
-
-    const result = await isBucketPubliclyWritable(buildCtx(), 'images')
-
-    expect(result).toBe(false)
-  })
 })

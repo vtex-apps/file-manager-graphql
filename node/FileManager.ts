@@ -50,11 +50,6 @@ const routes = {
   // `null`, unlike a default parameter.
   Policy: (bucket: string, app?: string | null) =>
     `/policies/${encodeURIComponent(app ?? runningAppName)}/${encodeURIComponent(bucket)}`,
-  // Separate, always-public route on file-manager's side (readAccess/writeAccess only, no
-  // token needed) -- distinct from Policy() above, which stays admin-gated and returns the
-  // full envelope (updatedAt/updatedBy included).
-  AccessLevels: (bucket: string, app?: string | null) =>
-    `${routes.Policy(bucket, app)}/access-levels`,
 }
 
 export type GraphQLAccessLevel =
@@ -102,16 +97,6 @@ const mapBucketPolicyFromWire = (policy: any): any => {
     writeAccess: fromWireAccessLevel(policy.writeAccess),
   }
 }
-
-export type BucketAccessLevels = {
-  readAccess: GraphQLAccessLevel
-  writeAccess: GraphQLAccessLevel
-}
-
-const mapAccessLevelsFromWire = (raw: any): BucketAccessLevels => ({
-  readAccess: fromWireAccessLevel(raw.readAccess),
-  writeAccess: fromWireAccessLevel(raw.writeAccess),
-})
 
 export const mapPolicyViewFromWire = (raw: any): any => {
   if (!raw) {
@@ -236,19 +221,6 @@ export default class FileManager extends ExternalClient {
   public getPolicy = async (bucket: string, app?: string | null): Promise<any> => {
     const raw = await this.http.get(routes.Policy(bucket, app))
     return mapPolicyViewFromWire(raw)
-  }
-
-  /**
-   * Hits file-manager's always-public /access-levels route (readAccess/writeAccess only, no
-   * token needed) -- unlike getPolicy above, which requires an admin token and returns the full
-   * envelope. Used to check whether a bucket is writable anonymously before an anonymous write.
-   */
-  public getAccessLevels = async (
-    bucket: string,
-    app?: string | null
-  ): Promise<BucketAccessLevels> => {
-    const raw = await this.http.get(routes.AccessLevels(bucket, app))
-    return mapAccessLevelsFromWire(raw)
   }
 
   public setAdminPolicy = async (

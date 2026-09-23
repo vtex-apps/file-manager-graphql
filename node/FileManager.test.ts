@@ -301,32 +301,6 @@ describe('FileManager policies methods', () => {
     await expect(fileManager.getPolicy('b1')).rejects.toEqual(err)
   })
 
-  it('getAccessLevels hits the /access-levels route and maps readAccess/writeAccess', async () => {
-    const { fileManager, http } = makeClient()
-
-    http.get.mockResolvedValue({
-      readAccess: 'account-administrator',
-      writeAccess: 'public',
-    })
-
-    const result = await fileManager.getAccessLevels('b1')
-
-    expect(http.get).toHaveBeenCalledWith('/policies//b1/access-levels')
-    expect(result).toEqual({
-      readAccess: 'ACCOUNT_ADMINISTRATOR',
-      writeAccess: 'PUBLIC',
-    })
-  })
-
-  it('getAccessLevels propagates an HTTP rejection unchanged', async () => {
-    const { fileManager, http } = makeClient()
-    const err = { response: { status: 403 } }
-
-    http.get.mockRejectedValue(err)
-
-    await expect(fileManager.getAccessLevels('b1')).rejects.toEqual(err)
-  })
-
   it('setAdminPolicy propagates an HTTP rejection unchanged', async () => {
     const { fileManager, http } = makeClient()
     const err = { response: { status: 403 } }
