@@ -4,7 +4,7 @@ import createDOMPurify from 'dompurify'
 // eslint-disable-next-line prettier/prettier 
 import type { ServiceContext } from '@vtex/api'
 
-import { Readable } from 'stream'
+import { Readable, Transform } from 'stream'
 
 import { resolveUserToken } from '../directives/auth'
 import FileManager from '../FileManager'
@@ -41,6 +41,28 @@ type DeleteBucketPolicyArgs = {
   app?: string | null
 }
 
+export const MAX_FILE_SIZE_MB = 4
+export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+/** Errors out as soon as the stream crosses maxBytes, instead of after buffering/forwarding the whole payload. */
+export const limitStreamSize = (stream: Readable, maxBytes: number): Readable => {
+  let total = 0
+
+  return stream.pipe(
+    new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        total += chunk.length
+        if (total > maxBytes) {
+          callback(new Error(`File exceeds the maximum allowed size of ${maxBytes} bytes`))
+          return
+        }
+
+        callback(null, chunk)
+      },
+    })
+  )
+}
+
 const isValidFileFormat = (extension: string, mimetype: string) => {
 
   if (!extension || !mimetype) {
@@ -74,7 +96,7 @@ const isValidFileFormat = (extension: string, mimetype: string) => {
 }
 
 const sanitizeSvgFile = async (loadedFile: any) => {
-    const fileBuffer = await loadedFile.createReadStream().toArray()
+    const fileBuffer = await limitStreamSize(loadedFile.createReadStream(), MAX_FILE_SIZE_BYTES).toArray()
     const fileString = Buffer.concat(fileBuffer).toString('utf8')
         
     const {window} = new JSDOM('')
@@ -111,7 +133,7 @@ export const resolvers = {
       return file
     },
     settings: async () => ({
-      maxFileSizeMB: 4,
+      maxFileSizeMB: MAX_FILE_SIZE_MB,
     }),
     listBucketPolicies: async (_: unknown, __: unknown, ctx: ServiceContext) => {
       const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
@@ -181,7 +203,7 @@ export const resolvers = {
       }
 
       const filename = `${uuidv4()}.${extension}`
-      const stream = loadedFile.createReadStream()
+      const stream = limitStreamSize(loadedFile.createReadStream(), MAX_FILE_SIZE_BYTES)
 
       const incomingFile = { filename, mimetype, encoding }
 

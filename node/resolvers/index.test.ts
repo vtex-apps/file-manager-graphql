@@ -8,6 +8,7 @@ const getPolicyMock = jest.fn()
 const setAdminPolicyMock = jest.fn()
 const deleteAdminPolicyMock = jest.fn()
 const listPoliciesMock = jest.fn()
+const saveFileMock = jest.fn()
 
 jest.mock('../FileManager', () => {
   return jest.fn().mockImplementation((_context, _options, userToken) => ({
@@ -16,11 +17,14 @@ jest.mock('../FileManager', () => {
     setAdminPolicy: setAdminPolicyMock,
     deleteAdminPolicy: deleteAdminPolicyMock,
     listPolicies: listPoliciesMock,
+    saveFile: saveFileMock,
   }))
 })
 
+import { Readable } from 'stream'
+
 import FileManagerMock from '../FileManager'
-import { resolvers } from './index'
+import { limitStreamSize, MAX_FILE_SIZE_BYTES, resolvers } from './index'
 
 const buildCtx = ({
   cookie,
@@ -59,6 +63,7 @@ describe('resolvers forward the resolved user token to FileManager for policy op
     setAdminPolicyMock.mockResolvedValue({ bucket: 'images' })
     deleteAdminPolicyMock.mockResolvedValue({ bucket: 'images', removedAt: 'now' })
     listPoliciesMock.mockResolvedValue({ policies: [], nextMarker: null })
+    saveFileMock.mockResolvedValue('https://acme.vtexassets.com/assets/images/some-file.png')
   })
 
   afterEach(() => {
@@ -201,5 +206,90 @@ describe('resolvers forward the resolved user token to FileManager for policy op
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('"status":403')
     )
+  })
+})
+
+describe('limitStreamSize', () => {
+  it('passes through a stream within the limit unchanged', async () => {
+    const chunks = [Buffer.from('a'.repeat(10))]
+    const result = await limitStreamSize(Readable.from(chunks), 100).toArray()
+
+    expect(Buffer.concat(result).toString()).toBe('a'.repeat(10))
+  })
+
+  it('errors out once the stream crosses the limit, without waiting for it to end', async () => {
+    const chunks = [Buffer.from('a'.repeat(50)), Buffer.from('b'.repeat(50))]
+
+    await expect(
+      limitStreamSize(Readable.from(chunks), 60).toArray()
+    ).rejects.toThrow(/exceeds the maximum allowed size/)
+  })
+})
+
+describe('uploadFile', () => {
+  beforeEach(() => {
+    saveFileMock.mockReset()
+  })
+
+  const buildLoadedFile = (content: string, mimetype = 'image/png') => ({
+    filename: 'photo.png',
+    mimetype,
+    encoding: '7bit',
+    createReadStream: () => Readable.from([Buffer.from(content)]),
+  })
+
+  // saveFile is a network call in production, so its real implementation reads the stream it's
+  // given (that's how the body reaches file-manager). The mock has to do the same to observe the
+  // size-limit Transform erroring mid-stream, instead of just recording that it was called.
+  const drainStreamThenResolve = async (_file: unknown, stream: Readable) => {
+    await stream.toArray()
+    return 'https://acme.vtexassets.com/assets/images/some-file.png'
+  }
+
+  it('saves a file within the size limit', async () => {
+    saveFileMock.mockImplementation(drainStreamThenResolve)
+    const loadedFile = buildLoadedFile('small file content')
+    const ctx = buildCtx({ cookie: 'cookie-token' })
+
+    const result = await resolvers.Mutation.uploadFile(
+      undefined,
+      { file: Promise.resolve(loadedFile), bucket: 'images' },
+      ctx
+    )
+
+    expect(result.fileUrl).toBe(
+      'https://acme.vtexassets.com/assets/images/some-file.png'
+    )
+  })
+
+  it('rejects a file over MAX_FILE_SIZE_BYTES instead of forwarding the whole payload', async () => {
+    saveFileMock.mockImplementation(drainStreamThenResolve)
+    const oversizedContent = 'a'.repeat(MAX_FILE_SIZE_BYTES + 1)
+    const loadedFile = buildLoadedFile(oversizedContent)
+    const ctx = buildCtx({ cookie: 'cookie-token' })
+
+    await expect(
+      resolvers.Mutation.uploadFile(
+        undefined,
+        { file: Promise.resolve(loadedFile), bucket: 'images' },
+        ctx
+      )
+    ).rejects.toThrow(/exceeds the maximum allowed size/)
+  })
+
+  it('rejects an invalid file format before touching the stream', async () => {
+    const loadedFile = buildLoadedFile('irrelevant', 'application/x-msdownload')
+    const badFile = { ...loadedFile, filename: 'virus.exe' }
+    const ctx = buildCtx({ cookie: 'cookie-token' })
+
+    await expect(
+      resolvers.Mutation.uploadFile(
+        undefined,
+        { file: Promise.resolve(badFile), bucket: 'images' },
+        ctx
+      )
+    ).rejects.toThrow('Invalid file format')
+
+    expect(saveFileMock).not.toHaveBeenCalled()
   })
 })
