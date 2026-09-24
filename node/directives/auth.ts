@@ -1,8 +1,6 @@
 import { defaultFieldResolver, GraphQLField } from 'graphql'
 import { SchemaDirectiveVisitor } from 'graphql-tools'
 
-import { ALLOW_LIST } from '../config/allowList'
-
 export const resolveUserToken = (ctx: any): string | undefined => {
   const token =
     ctx.cookies.get('VtexIdclientAutCookie') ??
@@ -60,23 +58,10 @@ export class Authorization extends SchemaDirectiveVisitor {
 
     // eslint-disable-next-line max-params
     field.resolve = async (root, args, ctx, info) => {
-      const operationName = info.fieldName
-      let isAllowed = false
+      const cookieAllowsAccess = await authFromCookie(ctx, info.fieldName)
 
-      if (operationName === 'uploadFile') {
-        const isInAllowList = ALLOW_LIST.includes(ctx.vtex.account)
-
-        if (isInAllowList) {
-          isAllowed = true
-        }
-      }
-
-      if (!isAllowed) {
-        const cookieAllowsAccess = await authFromCookie(ctx, operationName)
-
-        if (cookieAllowsAccess !== true) {
-          throw new Error(cookieAllowsAccess)
-        }
+      if (cookieAllowsAccess !== true) {
+        throw new Error(cookieAllowsAccess)
       }
 
       return resolve(root, args, ctx, info)
