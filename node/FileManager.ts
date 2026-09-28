@@ -3,6 +3,8 @@ import { ExternalClient } from '@vtex/api'
 
 import { FileNotFound } from './exceptions/fileNotFound'
 import { InternalServerError } from './exceptions/internalServerError'
+import { FileTooLarge } from './exceptions/fileTooLarge'
+import { FileSizeLimitError } from './exceptions/fileSizeLimitError'
 
 const appId = process.env.VTEX_APP_ID
 const [runningAppName] = appId ? appId.split('@') : ['']
@@ -184,6 +186,12 @@ export default class FileManager extends ExternalClient {
         metric: 'file-manager-save-file',
       })
     } catch (e) {
+      /* A stream size-limit failure is the client's fault, not the server's -- surface it as a
+       * 4xx instead of falling through to the generic 500 below. */
+      if (e instanceof FileSizeLimitError) {
+        throw new FileTooLarge({}, e.message)
+      }
+
       const status = e.statusCode || e.response?.status || 500
       const extensions = pickForwardFields(e.response)
 

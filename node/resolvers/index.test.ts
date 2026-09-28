@@ -24,6 +24,7 @@ jest.mock('../FileManager', () => {
 import { Readable } from 'stream'
 
 import FileManagerMock from '../FileManager'
+import { FileSizeLimitError } from '../exceptions/fileSizeLimitError'
 import { limitStreamSize, MAX_FILE_SIZE_BYTES, resolvers } from './index'
 
 const buildCtx = ({
@@ -223,6 +224,31 @@ describe('limitStreamSize', () => {
     await expect(
       limitStreamSize(Readable.from(chunks), 60).toArray()
     ).rejects.toThrow(/exceeds the maximum allowed size/)
+  })
+
+  // Regression coverage (PR #38 review, mendescamara): saveFile needs a distinguishable error
+  // type to tell a size-limit failure apart from other stream errors, so it can surface it as a
+  // 4xx instead of a generic 500.
+  it('rejects with a FileSizeLimitError instance, not a plain Error', async () => {
+    const chunks = [Buffer.from('a'.repeat(100))]
+
+    await expect(
+      limitStreamSize(Readable.from(chunks), 10).toArray()
+    ).rejects.toBeInstanceOf(FileSizeLimitError)
+  })
+
+  // Regression coverage (PR #38 review, mendescamara): `.pipe()` alone doesn't forward the
+  // source stream's own errors (e.g. graphql-upload's truncation error) to the destination.
+  it('propagates an error emitted by the source stream to the returned stream', async () => {
+    const source = new Readable({
+      read() {
+        this.emit('error', new Error('source blew up'))
+      },
+    })
+
+    await expect(limitStreamSize(source, 1000).toArray()).rejects.toThrow(
+      'source blew up'
+    )
   })
 })
 

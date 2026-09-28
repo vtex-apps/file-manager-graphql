@@ -9,6 +9,7 @@ import { Readable, Transform } from 'stream'
 import { resolveUserToken } from '../directives/auth'
 import FileManager from '../FileManager'
 import { withPolicyLogging } from '../utils/policyLogger'
+import { FileSizeLimitError } from '../exceptions/fileSizeLimitError'
 
 
 type FileManagerArgs = {
@@ -42,25 +43,35 @@ type DeleteBucketPolicyArgs = {
 }
 
 export const MAX_FILE_SIZE_MB = 4
-export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+/* @vtex/api's graphqlUploadKoa middleware already truncates uploads at 4 * 1e6 bytes
+ * (upload.js, maxFileSize) before this resolver ever reads the stream. Align to that value --
+ * a larger threshold here (e.g. 4 * 1024 * 1024) would never actually trigger, since the
+ * framework's smaller limit always fires first. */
+export const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1e6
 
 /** Errors out as soon as the stream crosses maxBytes, instead of after buffering/forwarding the whole payload. */
 export const limitStreamSize = (stream: Readable, maxBytes: number): Readable => {
   let total = 0
 
-  return stream.pipe(
-    new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
-        total += chunk.length
-        if (total > maxBytes) {
-          callback(new Error(`File exceeds the maximum allowed size of ${maxBytes} bytes`))
-          return
-        }
+  const transform = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      total += chunk.length
+      if (total > maxBytes) {
+        callback(new FileSizeLimitError(`File exceeds the maximum allowed size of ${maxBytes} bytes`))
+        return
+      }
 
-        callback(null, chunk)
-      },
-    })
-  )
+      callback(null, chunk)
+    },
+  })
+
+  /* `.pipe()` doesn't forward the source stream's errors to the destination (e.g. graphql-upload's
+   * own truncation error) -- without this, a source failure would leave the destination hanging
+   * instead of surfacing. */
+  stream.on('error', (err) => transform.destroy(err))
+
+  return stream.pipe(transform)
 }
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
