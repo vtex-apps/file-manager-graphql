@@ -4,7 +4,7 @@ import createDOMPurify from 'dompurify'
 // eslint-disable-next-line prettier/prettier 
 import type { ServiceContext } from '@vtex/api'
 
-import { Readable, Transform } from 'stream'
+import { Readable, Transform, pipeline } from 'stream'
 
 import { resolveUserToken } from '../directives/auth'
 import FileManager from '../FileManager'
@@ -66,13 +66,29 @@ export const limitStreamSize = (stream: Readable, maxBytes: number): Readable =>
     },
   })
 
-  /* `.pipe()` doesn't forward the source stream's errors to the destination (e.g. graphql-upload's
-   * own truncation error) -- without this, a source failure would leave the destination hanging
-   * instead of surfacing. */
-  stream.on('error', (err) => transform.destroy(err))
-
-  return stream.pipe(transform)
+  /* `pipeline` (unlike `.pipe()`) tears down both ends on a failure in either direction: a source
+   * error reaches the consumer, and crossing maxBytes destroys the source instead of leaving it
+   * open. Its callback is mandatory; the error itself still surfaces on the returned stream. */
+  return pipeline(stream, transform, () => undefined)
 }
+
+/* Every resolver needs the same client, built with the caller's own token: the app token
+ * authorizes the hop, the user token identifies the caller for file-manager's policy checks.
+ * Centralized so adding a constructor argument stays a one-line change (it previously had to be
+ * repeated across all 8 resolvers in lockstep). */
+const fileManagerFor = (ctx: ServiceContext) =>
+  new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+
+const policyLogContext = (
+  operation: string,
+  bucket: string | null,
+  ctx: ServiceContext
+) => ({
+  operation,
+  bucket,
+  account: ctx.vtex.account,
+  workspace: ctx.vtex.workspace,
+})
 
 const isValidFileFormat = (extension: string, mimetype: string) => {
 
@@ -128,7 +144,7 @@ const sanitizeSvgFile = async (loadedFile: any) => {
 export const resolvers = {
   Query: {
     getFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { path, width, height, aspect, bucket } = args
 
       const file = await fileManager.getFile({path, width, height, aspect, bucket})
@@ -136,7 +152,7 @@ export const resolvers = {
       return file
     },
     getFileUrl: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { path, bucket } = args
 
       const file = await fileManager.getFileUrl(path, bucket)
@@ -147,15 +163,10 @@ export const resolvers = {
       maxFileSizeMB: MAX_FILE_SIZE_MB,
     }),
     listBucketPolicies: async (_: unknown, __: unknown, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
 
       return withPolicyLogging(
-        {
-          operation: 'listBucketPolicies',
-          bucket: null,
-          account: ctx.vtex.account,
-          workspace: ctx.vtex.workspace,
-        },
+        policyLogContext('listBucketPolicies', null, ctx),
         async () => {
           const allPolicies: any[] = []
           let marker: string | undefined
@@ -171,23 +182,18 @@ export const resolvers = {
       )
     },
     getBucketPolicy: async (_: unknown, args: GetBucketPolicyArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { bucket, app } = args
 
       return withPolicyLogging(
-        {
-          operation: 'getBucketPolicy',
-          bucket,
-          account: ctx.vtex.account,
-          workspace: ctx.vtex.workspace,
-        },
+        policyLogContext('getBucketPolicy', bucket, ctx),
         () => fileManager.getPolicy(bucket, app)
       )
     },
   },
   Mutation: {
     uploadFile: async (_: unknown, args: UploadFileArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { file, bucket } = args
       let loadedFile = await file
       const {filename: name, mimetype, encoding } = loadedFile
@@ -200,8 +206,14 @@ export const resolvers = {
       // Validate SVG files separately
       // SVG files require additional validation to prevent XSS attacks
       // and other security issues, so we check if the file is SVG
-      // and sanitize it if necessary.         
+      // and sanitize it if necessary.
 
+      /* Sanitization runs before file-manager authorizes the write, so an unauthorized caller
+       * still pays its CPU cost. Accepted on purpose: a pre-check here would need a second
+       * authorization source (the /access-levels route this PR removed, see 4d30042) that could
+       * drift from the one the write itself applies, and it would save no I/O anyway --
+       * graphql-upload spools the whole body to a temp file before this resolver runs. The
+       * worst case per request is bounded by MAX_FILE_SIZE_BYTES. */
       if (mimetype === 'image/svg+xml') {             
         const {isSafe, sanitizedContent} = await sanitizeSvgFile(loadedFile)
           if (!isSafe) {            
@@ -225,7 +237,7 @@ export const resolvers = {
       }
     },
     deleteFile: async (_: unknown, args: FileManagerArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { path, bucket } = args
 
       await fileManager.deleteFile(path, bucket)
@@ -233,30 +245,20 @@ export const resolvers = {
       return true
     },
     setBucketPolicy: async (_: unknown, args: SetBucketPolicyArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { bucket, readAccess, writeAccess, app } = args
 
       return withPolicyLogging(
-        {
-          operation: 'setBucketPolicy',
-          bucket,
-          account: ctx.vtex.account,
-          workspace: ctx.vtex.workspace,
-        },
+        policyLogContext('setBucketPolicy', bucket, ctx),
         () => fileManager.setAdminPolicy(bucket, readAccess, writeAccess, app)
       )
     },
     deleteBucketPolicy: async (_: unknown, args: DeleteBucketPolicyArgs, ctx: ServiceContext) => {
-      const fileManager = new FileManager(ctx.vtex, undefined, resolveUserToken(ctx))
+      const fileManager = fileManagerFor(ctx)
       const { bucket, app } = args
 
       return withPolicyLogging(
-        {
-          operation: 'deleteBucketPolicy',
-          bucket,
-          account: ctx.vtex.account,
-          workspace: ctx.vtex.workspace,
-        },
+        policyLogContext('deleteBucketPolicy', bucket, ctx),
         () => fileManager.deleteAdminPolicy(bucket, app)
       )
     },

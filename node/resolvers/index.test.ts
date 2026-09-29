@@ -250,6 +250,26 @@ describe('limitStreamSize', () => {
       'source blew up'
     )
   })
+
+  // Regression coverage (PR #38 review round 2, mendescamara): the opposite direction. `.pipe()`
+  // only unpipes the source when the destination fails, leaving it open; `pipeline` destroys it.
+  // The source here never ends on its own -- an ending one is auto-destroyed either way, which
+  // would make this assertion pass even with `.pipe()`.
+  it('destroys the source stream once the limit is exceeded', async () => {
+    const source = new Readable({
+      read() {
+        this.push(Buffer.from('a'.repeat(50)))
+      },
+    })
+
+    await expect(limitStreamSize(source, 60).toArray()).rejects.toThrow(
+      /exceeds the maximum allowed size/
+    )
+
+    await new Promise(resolve => setImmediate(resolve))
+
+    expect(source.destroyed).toBe(true)
+  })
 })
 
 describe('uploadFile', () => {

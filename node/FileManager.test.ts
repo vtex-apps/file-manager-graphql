@@ -326,6 +326,28 @@ describe('FileManager policies methods', () => {
     }
   )
 
+  // Regression coverage (PR #38 review round 2, mendescamara): a *partial* body used to be
+  // returned whole, so a response carrying `bucket` but no `removedAt` still failed GraphQL's
+  // non-nullable DeleteBucketPolicyResult.removedAt after a successful delete.
+  it.each([
+    [{ bucket: 'b1' }, { bucket: 'b1', removedAt: 'NOW' }],
+    [{ removedAt: '2026-01-01T00:00:00.000Z' }, { bucket: 'b1', removedAt: '2026-01-01T00:00:00.000Z' }],
+  ])(
+    'deleteAdminPolicy fills each missing field independently for the partial body %j',
+    async (partialBody, expected) => {
+      const { fileManager, http } = makeClient()
+
+      jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('NOW')
+      http.delete.mockResolvedValue(partialBody)
+
+      try {
+        await expect(fileManager.deleteAdminPolicy('b1')).resolves.toEqual(expected)
+      } finally {
+        jest.restoreAllMocks()
+      }
+    }
+  )
+
   it('listPolicies propagates an HTTP rejection unchanged', async () => {
     const { fileManager, http } = makeClient()
     const err = { response: { status: 403 } }
