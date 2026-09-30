@@ -113,6 +113,19 @@ describe('FileManager saveFile error mapping', () => {
       InternalServerError
     )
   })
+
+  /* Regression: an error with statusCode but no `response` used to throw a TypeError
+   * ("reading 'status'") that masked the upstream 403. */
+  it('preserves the upstream statusCode when the error has no response', async () => {
+    const { fileManager, http } = makeClient()
+    http.put.mockRejectedValue({ statusCode: 403 })
+
+    const file = { filename: 'a.png', encoding: '7bit', mimetype: 'image/png' }
+
+    await expect(fileManager.saveFile(file, 'stream' as any, 'images')).rejects.toMatchObject({
+      statusCode: 403,
+    })
+  })
 })
 
 describe('access level helpers', () => {

@@ -11,8 +11,10 @@ const [runningAppName] = appId ? appId.split('@') : ['']
 
 const FORWARD_FIELDS = ['status', 'statusText', 'data', 'stack', 'stackTrace']
 
-const pickForwardFields = (object: any) => 
-  ({ ...Object.fromEntries(FORWARD_FIELDS.map(field => [field, object[field]])) })
+/* `object` is undefined when the client error carries no `response` (e.g. a 403 surfaced only
+ * via statusCode); reading it unguarded would mask the real upstream error. */
+const pickForwardFields = (object: any) =>
+  ({ ...Object.fromEntries(FORWARD_FIELDS.map(field => [field, object?.[field]])) })
 
 const routes = {
   Assets: () => `/assets/${runningAppName}`,
