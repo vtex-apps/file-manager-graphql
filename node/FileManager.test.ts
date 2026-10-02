@@ -14,6 +14,9 @@ import FileManager, {
   toWireAccessLevel,
   fromWireAccessLevel,
 } from './FileManager'
+import { FileSizeLimitError } from './exceptions/fileSizeLimitError'
+import { FileTooLarge } from './exceptions/fileTooLarge'
+import { InternalServerError } from './exceptions/internalServerError'
 
 describe('FileManager constructor headers', () => {
   const baseContext = {
@@ -69,6 +72,59 @@ describe('FileManager constructor headers', () => {
     const headers = (fileManager as any).options.headers
 
     expect(headers.Authorization).not.toBe(userToken)
+  })
+})
+
+// Regression coverage (PR #38 review, mendescamara): a stream size-limit failure used to be
+// swallowed into the same generic 500 as any other saveFile error. It must surface as a 4xx.
+describe('FileManager saveFile error mapping', () => {
+  const baseContext = {
+    account: 'testaccount',
+    workspace: 'testworkspace',
+    authToken: 'SENTINEL_APP_TOKEN',
+  }
+
+  const makeClient = () => {
+    const fileManager = new FileManager(baseContext as any, undefined, 'user-token')
+    const http = { put: jest.fn() }
+    ;(fileManager as any).http = http
+
+    return { fileManager, http }
+  }
+
+  it('maps a FileSizeLimitError to FileTooLarge (4xx), not InternalServerError', async () => {
+    const { fileManager, http } = makeClient()
+    http.put.mockRejectedValue(new FileSizeLimitError('File exceeds the maximum allowed size of 10 bytes'))
+
+    const file = { filename: 'a.png', encoding: '7bit', mimetype: 'image/png' }
+
+    await expect(fileManager.saveFile(file, 'stream' as any, 'images')).rejects.toBeInstanceOf(
+      FileTooLarge
+    )
+  })
+
+  it('still maps other errors to InternalServerError (500) unchanged', async () => {
+    const { fileManager, http } = makeClient()
+    http.put.mockRejectedValue({ response: { status: 502 } })
+
+    const file = { filename: 'a.png', encoding: '7bit', mimetype: 'image/png' }
+
+    await expect(fileManager.saveFile(file, 'stream' as any, 'images')).rejects.toBeInstanceOf(
+      InternalServerError
+    )
+  })
+
+  /* Regression: an error with statusCode but no `response` used to throw a TypeError
+   * ("reading 'status'") that masked the upstream 403. */
+  it('preserves the upstream statusCode when the error has no response', async () => {
+    const { fileManager, http } = makeClient()
+    http.put.mockRejectedValue({ statusCode: 403 })
+
+    const file = { filename: 'a.png', encoding: '7bit', mimetype: 'image/png' }
+
+    await expect(fileManager.saveFile(file, 'stream' as any, 'images')).rejects.toMatchObject({
+      statusCode: 403,
+    })
   })
 })
 
@@ -277,6 +333,28 @@ describe('FileManager policies methods', () => {
           bucket: 'b1',
           removedAt: now,
         })
+      } finally {
+        jest.restoreAllMocks()
+      }
+    }
+  )
+
+  // Regression coverage (PR #38 review round 2, mendescamara): a *partial* body used to be
+  // returned whole, so a response carrying `bucket` but no `removedAt` still failed GraphQL's
+  // non-nullable DeleteBucketPolicyResult.removedAt after a successful delete.
+  it.each([
+    [{ bucket: 'b1' }, { bucket: 'b1', removedAt: 'NOW' }],
+    [{ removedAt: '2026-01-01T00:00:00.000Z' }, { bucket: 'b1', removedAt: '2026-01-01T00:00:00.000Z' }],
+  ])(
+    'deleteAdminPolicy fills each missing field independently for the partial body %j',
+    async (partialBody, expected) => {
+      const { fileManager, http } = makeClient()
+
+      jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('NOW')
+      http.delete.mockResolvedValue(partialBody)
+
+      try {
+        await expect(fileManager.deleteAdminPolicy('b1')).resolves.toEqual(expected)
       } finally {
         jest.restoreAllMocks()
       }

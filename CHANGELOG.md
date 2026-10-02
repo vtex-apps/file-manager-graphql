@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+- **Breaking (behavior)**: `uploadFile` no longer carries `@requiresAuth`, and the static `ALLOW_LIST` that used to bypass it for a fixed set of accounts is removed. Authorization for uploads is now entirely `vtex.file-manager`'s: it enforces the bucket's `writeAccess` on the write itself, so a bucket set to `public` accepts anonymous uploads and any other level is rejected there. Rejections now surface as file-manager's status (wrapped by `saveFile` as `Fail to save file`) instead of `User must be logged to access this resource`. `deleteFile` and the bucket-policy operations are unaffected.
+- `uploadFile` now enforces `maxFileSizeMB` (4 MB) for real, instead of it being an informational value returned by the `settings` query only. The upload stream is cut off as soon as it crosses the limit, instead of after the whole payload was read/forwarded.
+
+### Fixed
+
+- `limitStreamSize`'s threshold now matches `@vtex/api`'s own `graphqlUploadKoa` truncation limit (4 \* 1e6 bytes, not 4 \* 1024 \* 1024) -- the larger value never actually triggered, since the framework's smaller limit always cut the stream first. It also uses `stream.pipeline` instead of `.pipe()`, which tears down both ends on failure in either direction (`.pipe()` forwarded no source error to the Transform, and left the source open when the Transform errored). A size-limit failure now surfaces as `FileTooLarge` (413) from `saveFile` instead of a generic `Fail to save file` 500.
+- `deleteBucketPolicy` no longer fails GraphQL's non-nullable `removedAt` when `vtex.file-manager` answers with a *partial* body: each field now falls back independently, instead of the whole response being returned verbatim whenever it carried a `bucket`.
+
+### Notes
+
+- Uploading an SVG runs sanitization (JSDOM + DOMPurify) before `vtex.file-manager` authorizes the write, so an unauthorized caller still costs CPU. This is an accepted trade-off, not an oversight: a pre-check here would reintroduce a second authorization source that can drift from the one the write applies, and it would save no I/O anyway, since `graphql-upload` spools the whole body to a temp file before the resolver runs. The per-request worst case stays bounded by `maxFileSizeMB`.
+
 ## [0.9.0] - 2026-09-17
 
 ### Changed

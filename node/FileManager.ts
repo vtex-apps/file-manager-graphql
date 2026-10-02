@@ -3,14 +3,18 @@ import { ExternalClient } from '@vtex/api'
 
 import { FileNotFound } from './exceptions/fileNotFound'
 import { InternalServerError } from './exceptions/internalServerError'
+import { FileTooLarge } from './exceptions/fileTooLarge'
+import { FileSizeLimitError } from './exceptions/fileSizeLimitError'
 
 const appId = process.env.VTEX_APP_ID
 const [runningAppName] = appId ? appId.split('@') : ['']
 
 const FORWARD_FIELDS = ['status', 'statusText', 'data', 'stack', 'stackTrace']
 
-const pickForwardFields = (object: any) => 
-  ({ ...Object.fromEntries(FORWARD_FIELDS.map(field => [field, object[field]])) })
+/* `object` is undefined when the client error carries no `response` (e.g. a 403 surfaced only
+ * via statusCode); reading it unguarded would mask the real upstream error. */
+const pickForwardFields = (object: any) =>
+  ({ ...Object.fromEntries(FORWARD_FIELDS.map(field => [field, object?.[field]])) })
 
 const routes = {
   Assets: () => `/assets/${runningAppName}`,
@@ -184,6 +188,12 @@ export default class FileManager extends ExternalClient {
         metric: 'file-manager-save-file',
       })
     } catch (e) {
+      /* A stream size-limit failure is the client's fault, not the server's -- surface it as a
+       * 4xx instead of falling through to the generic 500 below. */
+      if (e instanceof FileSizeLimitError) {
+        throw new FileTooLarge({}, e.message)
+      }
+
       const status = e.statusCode || e.response?.status || 500
       const extensions = pickForwardFields(e.response)
 
@@ -242,18 +252,15 @@ export default class FileManager extends ExternalClient {
   ): Promise<any> => {
     const raw: any = await this.http.delete(`${routes.Policy(bucket, app)}/admin`)
 
-    // @vtex/api's http.delete drops the JSON body (live: undefined), so GraphQL would
-    // fail on DeleteBucketPolicyResult.bucket: String! even after a successful delete.
-    if (raw && typeof raw === 'object' && raw.bucket) {
-      return raw
-    }
+    /* @vtex/api's http.delete drops the JSON body (live: undefined), so GraphQL would fail on
+     * DeleteBucketPolicyResult's non-nullable fields even after a successful delete. Each field
+     * falls back independently: returning `raw` whole whenever it carried a `bucket` used to let
+     * a partial body ({ bucket } with no removedAt) through and fail the same way. */
+    const body = raw && typeof raw === 'object' ? raw : {}
 
     return {
-      bucket,
-      removedAt:
-        raw && typeof raw === 'object' && raw.removedAt
-          ? raw.removedAt
-          : new Date().toISOString(),
+      bucket: body.bucket || bucket,
+      removedAt: body.removedAt || new Date().toISOString(),
     }
   }
 }
