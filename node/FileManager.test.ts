@@ -103,6 +103,21 @@ describe('FileManager saveFile error mapping', () => {
     )
   })
 
+  it('maps a 413 from the framework or upstream (statusCode or response.status) to FileTooLarge', async () => {
+    const file = { filename: 'a.png', encoding: '7bit', mimetype: 'image/png' }
+
+    for (const error of [{ statusCode: 413 }, { response: { status: 413 } }]) {
+      const { fileManager, http } = makeClient()
+
+      http.put.mockRejectedValue(error)
+
+      // eslint-disable-next-line no-await-in-loop
+      await expect(fileManager.saveFile(file, 'stream' as any, 'images')).rejects.toBeInstanceOf(
+        FileTooLarge
+      )
+    }
+  })
+
   it('still maps other errors to InternalServerError (500) unchanged', async () => {
     const { fileManager, http } = makeClient()
     http.put.mockRejectedValue({ response: { status: 502 } })

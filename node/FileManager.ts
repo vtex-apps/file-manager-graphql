@@ -195,6 +195,13 @@ export default class FileManager extends ExternalClient {
       }
 
       const status = e.statusCode || e.response?.status || 500
+
+      /* The framework's own upload truncation (and any upstream 413) is not our FileSizeLimitError,
+       * so it would otherwise log as INTERNAL_SERVER_ERROR. */
+      if (status === 413) {
+        throw new FileTooLarge({}, 'File exceeds the maximum allowed size')
+      }
+
       const extensions = pickForwardFields(e.response)
 
       throw new InternalServerError(extensions, 'Fail to save file', status)
