@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- `uploadFile` over the 4 MB limit no longer logs as `INTERNAL_SERVER_ERROR` / `Fail to save file`: `saveFile` now maps a 413 (the `@vtex/api` upload truncation or an upstream response) to `FileTooLarge`, same as our own `FileSizeLimitError`.
+
 ## [0.10.0] - 2026-10-02
 
 ### Changed
